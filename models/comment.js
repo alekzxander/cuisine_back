@@ -8,7 +8,7 @@ const commentModel = sequelizeDb.define('comment', {
         allowNull: false
     },
     score: {
-        type: Sequelize.STRING,
+        type: Sequelize.INTEGER,
         allowNull: false
     },
     user_id: {

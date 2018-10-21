@@ -8,7 +8,7 @@ const Type_has_menu = require('../../models/type_has_menu');
 const Type = require('../../models/type');
 const bcrypt = require('bcrypt-nodejs');
 const jwt = require('jsonwebtoken');
-
+const fs = require('fs');
 const index = (app) => {
 
     app.post('/login', async (req, res) => {
@@ -175,7 +175,58 @@ const index = (app) => {
         const types = await Type.findAll({});
 
         res.json({ types })
-    })
+    });
+    app.get('/menus_chef/:chefId', async (req, res) => {
+        const menusByChef = await Cooker.findOne({
+            where: {
+                id: req.params.chefId
+            },
+            include: [
+                {
+                    model: Menu,
+                    include: [
+                        {
+                            model: Comment,
+                            include: [
+                                {
+                                    model: User
+                                }
+                            ]
+                        },
+                        {
+                            model: Type_has_menu,
+                            include: [
+                                {
+                                    model: Type,
+                                    attributes: ['name']
+                                }
+                            ]
+                        },
+
+                    ]
+                },
+
+            ]
+        });
+        res.json({
+            menusByChef
+        })
+    });
+    app.get('/image_chef/:id', async (req, res) => {
+        const cooker = await Cooker.findOne({
+            where: {
+                id: req.params.id
+            }
+        });
+        fs.readFile(`public/images/${cooker.picture}`, 'binary', function (err, data) {
+            if (err) {
+                return console.log(err);
+            }
+            res.contentType('image/jpeg');
+            res.end(data, 'binary');
+        });
+    });
+
 };
 
 module.exports = index;

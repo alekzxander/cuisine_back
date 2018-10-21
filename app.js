@@ -12,8 +12,10 @@ const User = require('./models/user');
 const Comment = require('./models/comment');
 const Type_has_menu = require('./models/type_has_menu');
 const Type = require('./models/type');
+const path = require('path');
 
 app.use(bodyParser.json({ extended: false }));
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "http://localhost:3000");
