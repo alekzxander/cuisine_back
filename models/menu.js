@@ -28,11 +28,11 @@ const menuModel = sequelizeDb.define('menu', {
         allowNull: false
     },
     nb_guest: {
-        type: Sequelize.STRING,
+        type: Sequelize.INTEGER,
         allowNull: false
     },
     price: {
-        type: Sequelize.STRING,
+        type: Sequelize.INTEGER,
         allowNull: false
     },
     cooker_id: {

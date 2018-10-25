@@ -1,7 +1,7 @@
 const sequelizeDb = require('../database/db');
 const Sequelize = require('sequelize');
 
-const type_has_menuModel = sequelizeDb.define('type_has_menu', {
+const type_has_menuModel = sequelizeDb.define('type_has_menus', {
 
     type_id: {
         type: Sequelize.INTEGER,

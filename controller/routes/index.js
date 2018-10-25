@@ -49,34 +49,34 @@ const index = (app) => {
         }
     });
 
-    app.get('/menus', async (req, res) => {
-        const menus = await Menu.findAll({
-            where: {
-                draft: false
-            },
-            include: [
-                {
-                    model: Cooker,
-                    attributes: ['last_name', 'first_name', 'id'],
-                },
-                {
-                    model: Type_has_menu,
-                    include: [
-                        {
-                            model: Type
-                        }
-                    ]
-                }
+    // app.get('/menus', async (req, res) => {
+    //     const menus = await Menu.findAll({
+    //         where: {
+    //             draft: false
+    //         },
+    //         include: [
+    //             {
+    //                 model: Cooker,
+    //                 attributes: ['last_name', 'first_name', 'id'],
+    //             },
+    //             {
+    //                 model: Type_has_menu,
+    //                 include: [
+    //                     {
+    //                         model: Type
+    //                     }
+    //                 ]
+    //             }
 
-            ],
-            order: [['id', 'DESC']]
-        });
-        try {
-            res.json({ menus });
-        } catch (err) {
-            res.sendStatus(401);
-        }
-    });
+    //         ],
+    //         order: [['id', 'DESC']]
+    //     });
+    //     try {
+    //         res.json({ menus });
+    //     } catch (err) {
+    //         res.sendStatus(401);
+    //     }
+    // });
     app.get('/menu/:id', async (req, res) => {
         const menu = await Menu.findOne({
             where: {
@@ -84,8 +84,16 @@ const index = (app) => {
             },
             include: [
                 {
-                    model: Cooker,
                     model: Comment,
+                    include: [
+                        {
+                            model: User
+                        }
+                    ]
+                }, {
+                    model: Cooker,
+
+                }, {
                     model: Type_has_menu,
                     include: [
                         {
@@ -102,7 +110,7 @@ const index = (app) => {
             }
         });
         try {
-            res.json({ calendar, menu });
+            res.json({ menu });
         } catch (err) {
             res.sendStatus(401);
         }
@@ -159,7 +167,8 @@ const index = (app) => {
                     attributes: [
                         'first_name',
                         'last_name',
-                        'picture'
+                        'picture',
+                        'id'
                     ]
                 }
             ],
@@ -212,19 +221,107 @@ const index = (app) => {
             menusByChef
         })
     });
-    app.get('/image_chef/:id', async (req, res) => {
-        const cooker = await Cooker.findOne({
-            where: {
-                id: req.params.id
-            }
-        });
-        fs.readFile(`public/images/${cooker.picture}`, 'binary', function (err, data) {
-            if (err) {
-                return console.log(err);
-            }
-            res.contentType('image/jpeg');
-            res.end(data, 'binary');
-        });
+    app.get('/menus/:type?', async (req, res) => {
+        if (Object.keys(req.query).length === 0) {
+            const menus = await Menu.findAll({
+                where: {
+                    draft: false
+                },
+                include: [
+                    {
+                        model: Cooker,
+                        attributes: ['last_name', 'first_name', 'id'],
+                    },
+                    {
+                        model: Type_has_menu,
+                        include: [
+                            {
+                                model: Type
+                            }
+                        ]
+                    }
+                ],
+                order: [['id', 'DESC']]
+            });
+            res.json({ menus })
+        } else {
+            console.log(req.query.type)
+            const menus = await Menu.findAll({
+                where: {
+                    draft: false
+                },
+                include: [
+                    {
+                        model: Type
+                    }
+                ],
+                include: [{
+                    model: Type_has_menu,
+                    include: [
+                        {
+                            model: Type
+                        }
+                    ],
+                    where: {
+                        type_id: req.query.type
+                    },
+
+
+                }, {
+                    model: Cooker,
+                    attributes: ['last_name', 'first_name', 'id'],
+
+                }
+
+                ],
+                order: [['id', 'DESC']]
+            });
+            res.json({ menus })
+        }
+    })
+    app.get('/image/:model/:id', async (req, res) => {
+        if (req.params.model === 'Cooker') {
+            const cooker = await Cooker.findOne({
+                where: {
+                    id: req.params.id
+                }
+            });
+            fs.readFile(`public/images/${cooker.picture}`, function (err, data) {
+                if (err) {
+                    return console.log(err);
+                }
+                res.contentType('image/png');
+                res.end(data, 'binary');
+            });
+        } else if (req.params.model === 'User') {
+            const user = await User.findOne({
+                where: {
+                    id: req.params.id
+                }
+            });
+            fs.readFile(`public/images/${user.picture}`, function (err, data) {
+                if (err) {
+                    return console.log(err);
+                }
+                res.contentType('image/png');
+                res.end(data, 'binary');
+            });
+        } else {
+            const menu = await Menu.findOne({
+                where: {
+                    id: req.params.id
+                }
+
+            });
+            fs.readFile(`public/images/${menu.picture}`, function (err, data) {
+                if (err) {
+                    return console.log(err);
+                }
+                res.contentType('image/png');
+                res.end(data, 'binary');
+            })
+        }
+
     });
 
 };

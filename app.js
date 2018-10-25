@@ -37,6 +37,7 @@ Type_has_menu.belongsTo(Menu);
 Type.hasMany(Type_has_menu);
 Type_has_menu.belongsTo(Type)
 
+
 index(app);
 user(app);
 cooker(app);
