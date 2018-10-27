@@ -15,7 +15,7 @@ const index = (app) => {
         const logUser = await User.find({
             where: {
                 email: req.body.email
-            }
+            },
         });
         const logCooker = await Cooker.find({
             where: {
@@ -24,7 +24,6 @@ const index = (app) => {
         });
 
         if (logCooker) {
-            console.log('in cooker')
             bcrypt.compare(req.body.password, logCooker.password, (err, pass) => {
                 if (pass) {
                     const token = jwt.sign({ data: req.body.email, exp: Math.floor(Date.now() / 1000) + (60 * 60) }, 'secret');
@@ -35,7 +34,7 @@ const index = (app) => {
             });
 
         } else if (logUser) {
-            console.log('in cooker')
+            console.log('LOGIN USER')
             bcrypt.compare(req.body.password, logUser.password, (err, pass) => {
                 if (pass) {
                     const token = jwt.sign({ data: req.body.email, exp: Math.floor(Date.now() / 1000) + (60 * 60) }, 'secret');
@@ -49,34 +48,6 @@ const index = (app) => {
         }
     });
 
-    // app.get('/menus', async (req, res) => {
-    //     const menus = await Menu.findAll({
-    //         where: {
-    //             draft: false
-    //         },
-    //         include: [
-    //             {
-    //                 model: Cooker,
-    //                 attributes: ['last_name', 'first_name', 'id'],
-    //             },
-    //             {
-    //                 model: Type_has_menu,
-    //                 include: [
-    //                     {
-    //                         model: Type
-    //                     }
-    //                 ]
-    //             }
-
-    //         ],
-    //         order: [['id', 'DESC']]
-    //     });
-    //     try {
-    //         res.json({ menus });
-    //     } catch (err) {
-    //         res.sendStatus(401);
-    //     }
-    // });
     app.get('/menu/:id', async (req, res) => {
         const menu = await Menu.findOne({
             where: {
