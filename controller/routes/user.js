@@ -4,6 +4,12 @@ const Cooker = require('../../models/cooker');
 const bcrypt = require('bcrypt-nodejs');
 const jwt = require('jsonwebtoken');
 const auth = require('../config/auth');
+const multer = require('multer');
+const fs = require('fs');
+
+const upload = multer({
+    dest: 'public/images', // upload target directory
+});
 
 const user = (app) => {
     app.post('/profil-user', async (req, res) => {
@@ -39,11 +45,25 @@ const user = (app) => {
     });
 
 
-    app.put('/profil-user/:id', auth.verifyToken, async (req, res) => {
+    app.put('/profil-user/:id', auth.verifyToken, upload.single('avatar'), async (req, res) => {
+        const fileToUpload = req.file;
         const userAuth = auth.checkToken(req.token);
+        const meta = JSON.parse(req.body.data);
         if (!userAuth) {
             res.status(401).json({ message: 'User not connected' })
         } else {
+            let targetPath;
+            let tmpPath;
+            let imgOrigin;
+            if (fileToUpload) {
+                const extension = fileToUpload.mimetype.split('/');
+                targetPath = `public/images/${fileToUpload.filename}.${extension[1]}`;
+                tmpPath = fileToUpload.path;
+                imgOrigin = `${fileToUpload.filename}.${extension[1]}`;
+            } else {
+                imgOrigin = 'user.png';
+            }
+            console.log(imgOrigin)
             const user = await User.findOne({
                 where: {
                     email: userAuth.data,
@@ -51,13 +71,19 @@ const user = (app) => {
                 }
             });
             const updateUser = {
-                last_name: req.body.lastname,
-                first_name: req.body.firstname,
-                adresse: req.body.adresse,
-                phone: req.body.phone,
-                picture: 'user.png'
+                last_name: meta.lastname,
+                first_name: meta.firstname,
+                adresse: meta.adresse,
+                phone: meta.phone,
+                picture: imgOrigin
             }
             const userUpdated = await user.update(updateUser);
+            if (fileToUpload) {
+                const src = fs.createReadStream(tmpPath);
+                const dest = fs.createWriteStream(targetPath);
+                src.pipe(dest);
+                fs.unlink(tmpPath);
+            }
             try {
                 res.json({ userUpdated, type: 'user' })
             } catch (err) {
@@ -79,7 +105,10 @@ const user = (app) => {
         } catch (err) {
             res.sendStatus(401);
         }
-    })
+    });
+    app.post('/get-image', upload.single('img'), async (req, res) => {
+        res.json({ resp: req.file })
+    });
 };
 
 module.exports = user;

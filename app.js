@@ -13,6 +13,7 @@ const Comment = require('./models/comment');
 const Type_has_menu = require('./models/type_has_menu');
 const Type = require('./models/type');
 const path = require('path');
+const Calendar = require('./models/calendar');
 
 app.use(bodyParser.json({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -30,19 +31,20 @@ Transaction.belongsTo(Menu);
 User.hasMany(Transaction);
 Transaction.belongsTo(User);
 Cooker.hasMany(Menu);
-Menu.hasMany(Comment);
-User.hasMany(Comment);
+Menu.hasMany(Comment, { onDelete: 'cascade', hooks: true });
+User.hasMany(Comment, { onDelete: 'cascade', hooks: true });
 Comment.belongsTo(User);
 Comment.belongsTo(Menu);
 Menu.hasMany(Type_has_menu);
 Type_has_menu.belongsTo(Menu);
 Type.hasMany(Type_has_menu);
-Type_has_menu.belongsTo(Type)
-
+Type_has_menu.belongsTo(Type);
+Cooker.hasMany(Calendar);
+Calendar.belongsTo(Cooker);
 
 index(app);
 user(app);
-cooker(app);
+cooker(app, sequelize);
 
 
 app.listen(3001);

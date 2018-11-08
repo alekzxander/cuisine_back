@@ -2,9 +2,17 @@ const Cooker = require('../../models/cooker');
 const Menu = require('../../models/menu');
 const Type_has_menu = require('../../models/type_has_menu');
 const Calendar = require('../../models/calendar');
+const Comment = require('../../models/comment');
 const jwt = require('jsonwebtoken');
+const auth = require('../config/auth');
+const multer = require('multer');
+const fs = require('fs');
+const Type = require('../../models/type');
+const upload = multer({
+    dest: 'public/images', // upload target directory
+});
 
-const cooker = (app) => {
+const cooker = (app, sequelize) => {
 
     app.post('/profil-cooker', async (req, res) => {
         const verifyCooker = await Cooker.find({
@@ -32,100 +40,304 @@ const cooker = (app) => {
         }
 
     });
-    app.put('/profil-cooker', async (req, res) => {
-        const cooker = await Cooker.findOne({
-            where: {
-                id: 2
+    app.put('/profil-cooker/:id', auth.verifyToken, upload.single('avatar'), async (req, res) => {
+        const fileToUpload = req.file;
+        const userAuth = auth.checkToken(req.token);
+        const meta = JSON.parse(req.body.data);
+        if (!userAuth) {
+            res.status(401).json({ message: 'User not connected' })
+        } else {
+            const cooker = await Cooker.findOne({
+                where: {
+                    email: userAuth.data,
+                    id: req.params.id
+                }
+            });
+            let targetPath;
+            let tmpPath;
+            let imgOrigin;
+            if (fileToUpload) {
+                const extension = fileToUpload.mimetype.split('/');
+                targetPath = `public/images/${fileToUpload.filename}.${extension[1]}`;
+                tmpPath = fileToUpload.path;
+                imgOrigin = `${fileToUpload.filename}.${extension[1]}`;
+            } else {
+                imgOrigin = cooker.picture;
             }
-        });
-        const updateCooker = {
-            last_name: req.body.last_name,
-            first_name: req.body.first_name,
-            email: req.body.email,
-            picture: req.body.picture,
-            presentation: req.body.presentation
+
+            const updateCooker = {
+                last_name: meta.lastname,
+                first_name: meta.firstname,
+                picture: imgOrigin,
+                presentation: meta.presentation
+            }
+            const cookerUpdated = await cooker.update(updateCooker);
+            if (fileToUpload) {
+                const src = fs.createReadStream(tmpPath);
+                const dest = fs.createWriteStream(targetPath);
+                src.pipe(dest);
+                fs.unlink(tmpPath);
+            }
+            try {
+                res.json({ cookerUpdated, type: 'cooker' })
+            } catch (err) {
+                res.json({ err })
+            }
         }
-        const cookerUpdated = await cooker.update(updateCooker);
-        try {
+    });
+
+    app.post('/menu', auth.verifyToken, upload.single('picture'), async (req, res) => {
+        const fileToUpload = req.file;
+        const userAuth = auth.checkToken(req.token);
+        const meta = JSON.parse(req.body.data);
+        if (!userAuth) {
+            res.status(401).json({ message: 'User not connected' })
+        } else {
+            let targetPath;
+            let tmpPath;
+            let imgOrigin;
+            if (fileToUpload) {
+                const extension = fileToUpload.mimetype.split('/');
+                targetPath = `public/images/${fileToUpload.filename}.${extension[1]}`;
+                tmpPath = fileToUpload.path;
+                imgOrigin = `${fileToUpload.filename}.${extension[1]}`;
+            } else {
+                imgOrigin = 'user.png';
+            }
+            sequelize.transaction().then(async t => {
+                try {
+                    const cooker = await Cooker.findOne({
+                        where: {
+                            email: userAuth.data,
+                        }
+                    }, { transaction: t });
+                    console.log(imgOrigin)
+                    const menu = {
+                        title: meta.title,
+                        start: meta.start,
+                        dish: meta.dish,
+                        dessert: meta.dessert,
+                        nb_guest: 2,
+                        price: meta.price,
+                        cooker_id: cooker.id,
+                        draft: meta.draft,
+                        picture: imgOrigin
+                    };
+                    const createMenu = await Menu.create(menu, { transaction: t });
+                    meta.type.map(async (type) => {
+                        if (type.length > 0) {
+                            await Type_has_menu.create({ type_id: type, menu_id: createMenu.id }, { transaction: t })
+                        }
+                    });
+                    const newMenu = await Menu.findOne({
+                        where: {
+                            id: createMenu.id
+                        },
+                        include: [
+                            {
+                                model: Type_has_menu,
+                                include: [
+                                    {
+                                        model: Type
+                                    }
+                                ]
+                            }
+                        ]
+                    }, { transaction: t });
+                    await t.commit();
+                } catch (err) {
+                    console.log('err', err)
+                    await t.rollback();
+                }
+            });
+            if (fileToUpload) {
+                const src = fs.createReadStream(tmpPath);
+                const dest = fs.createWriteStream(targetPath);
+                src.pipe(dest);
+                fs.unlink(tmpPath);
+            }
+            try {
+                res.json({ createMenu: newMenu });
+            } catch (err) {
+                res.sendStatus(401);
+            }
+        }
+    });
+    app.delete('/menu/:id', auth.verifyToken, async (req, res) => {
+        const userAuth = auth.checkToken(req.token);
+        if (!userAuth) {
+            res.status(401).json({ message: 'User not connected' })
+        } else {
+            const menu = await Menu.findOne({
+                where: {
+                    id: req.params.id
+                }
+            });
+            const cooker = await Cooker.findOne({
+                where: {
+                    email: userAuth.data,
+                }
+            });
+            if (menu) {
+                if (menu.cooker_id === cooker.id) {
+                    await menu.destroy();
+                    fs.unlink(`public/images/${menu.picture}`, (err2) => {
+                        if (err2 && err2.code !== 'ENOENT') { // 'ENOENT' : file doesn't exist
+                            logger.error(`Error deleting file : ${err2}`);
+                        }
+                    });
+                    res.sendStatus(200);
+                }
+            } else {
+                res.sendStatus(400);
+            }
+        }
+    });
+    app.put('/menu/:id', auth.verifyToken, upload.single('picture'), async (req, res) => {
+        const userAuth = auth.checkToken(req.token);
+        const fileToUpload = req.file;
+        const meta = JSON.parse(req.body.data);
+        if (!userAuth) {
+            res.status(401).json({ message: 'User not connected' })
+        } else {
+            sequelize.transaction().then(async t => {
+                try {
+                    const cooker = await Cooker.findOne({
+                        where: {
+                            email: userAuth.data,
+                        },
+                    }, { transaction: t });
+
+                    const menu = await Menu.findOne({
+                        where: {
+                            id: req.params.id
+                        }
+                    }, { transaction: t });
+                    let targetPath;
+                    let tmpPath;
+                    let imgOrigin;
+                    if (fileToUpload) {
+                        const extension = fileToUpload.mimetype.split('/');
+                        targetPath = `public/images/${fileToUpload.filename}.${extension[1]}`;
+                        tmpPath = fileToUpload.path;
+                        imgOrigin = `${fileToUpload.filename}.${extension[1]}`;
+                        fs.unlink(`public/images/${menu.picture}`, (err2) => {
+                            if (err2 && err2.code !== 'ENOENT') { // 'ENOENT' : file doesn't exist
+                                logger.error(`Error deleting file : ${err2}`);
+                            }
+                        });
+                    } else {
+                        imgOrigin = menu.picture;
+                    }
+
+                    const typeHasMenu = await Type_has_menu.destroy({
+                        where: {
+                            menu_id: menu.id
+                        }
+                    }, { transaction: t });
+                    meta.type.map(async (type) => {
+                        if (type.length > 0) {
+                            await Type_has_menu.create({ type_id: type, menu_id: menu.id }, { transaction: t })
+                        }
+                    });
+                    const metaMenu = {
+                        title: meta.title,
+                        start: meta.start,
+                        dish: meta.dish,
+                        dessert: meta.dessert,
+                        nb_guest: 2,
+                        price: meta.price,
+                        cooker_id: cooker.id,
+                        draft: meta.draft,
+                        picture: imgOrigin
+                    };
+                    const menuUpdated = await menu.update(metaMenu, { transaction: t });
+                    const menuType = await Menu.findOne({
+                        where: {
+                            id: menuUpdated.id
+                        },
+                        include: [
+                            {
+                                model: Type_has_menu,
+                                include: [
+                                    {
+                                        model: Type
+                                    }
+                                ]
+                            }
+                        ]
+                    }, { transaction: t });
+                    await t.commit();
+                } catch (err) {
+                    console.log(err, 'error transaction')
+                    await t.rollback();
+                }
+            });
+            if (fileToUpload) {
+                const src = fs.createReadStream(tmpPath);
+                const dest = fs.createWriteStream(targetPath);
+                src.pipe(dest);
+                fs.unlink(tmpPath);
+            }
+            try {
+                res.json({ menu: menuType });
+            } catch (err) {
+                res.sendStatus(401);
+            }
+        }
+    });
+    app.post('/calendar',auth.verifyToken,  async (req, res) => {
+        const userAuth = auth.checkToken(req.token);
+        if (!userAuth) {
+            res.status(401).json({ message: 'User not connected' })
+        } else {
+        sequelize.transaction().then(async t => {
+            try{
+                const cooker = await Cooker.findOne({
+                    where: {
+                        email: userAuth.data
+                    }
+                },{ transaction: t });
+                const booking = await Calendar.destroy({
+                    where : {
+                        cooker_id : cooker.id
+                    }
+                },{ transaction: t });
+
+                req.body.date.forEach(async (date) => {
+                    await Calendar.create({ cooker_id: cooker.id, date })
+                }, { transaction: t });
+                await t.commit();
             res.sendStatus(200);
-        } catch (err) {
+            }catch(err){
             res.sendStatus(401);
-        }
-    });
-    app.post('/menu', async (req, res) => {
-        const cooker = await Cooker.findOne({
-            where: {
-                id: 3
-            }
+            await t.rollback();
+                }
         });
-        const menu = {
-            title: req.body.title,
-            start: req.body.start,
-            dish: req.body.dish,
-            dessert: req.body.dessert,
-            picture: req.body.picture,
-            nb_guest: req.body.guest,
-            price: req.body.price,
-            cooker_id: cooker.id,
-            draft: false
-        };
-        const createMenu = await Menu.create(menu);
-        req.body.type.map(async (type) => {
-            await Type_has_menu.create({ type_id: type, menu_id: createMenu.id })
-        });
-
-        try {
-            res.json({ createMenu });
-        } catch (err) {
-            res.sendStatus(401);
-        }
+    }
     });
-    app.put('/menu/:id', async (req, res) => {
-
-        //condition a rajouter avec le token pour vérifier si le menu correspont bien à cooker
-        const menu = await Menu.findOne({
+    app.get('/menus_cooker/:id', async (req, res) => {
+        const menus = await Menu.findAll({
             where: {
-                id: req.params.id
+                cooker_id: req.params.id
             },
-            include: [{
-                model: Cooker
-            }
+            include: [
+                {
+                    model: Type_has_menu,
+                    include: [
+                        {
+                            model: Type
+                        }
+                    ]
+                }
             ]
         });
-        const updateMenu = {
-            title: req.body.title,
-            start: req.body.start,
-            dish: req.body.dish,
-            dessert: req.body.dessert,
-            picture: req.body.picture,
-            nb_guest: req.body.guest,
-            price: req.body.price,
-            cooker_id: menu.cooker_id,
-            draft: false
-        };
-        const menuUpdated = await menu.update(updateMenu);
         try {
-            res.sendStatus(200);
+            res.json({ menus })
         } catch (err) {
-            res.sendStatus(401);
+            res.sendStatus(304)
         }
     })
-    app.post('/calendar', async (req, res) => {
-        const cooker = await Cooker.findOne({
-            where: {
-                id: 3
-            }
-        });
-        req.body.date.forEach(async (date) => {
-            await Calendar.create({ cooker_id: cooker.id, date })
-        });
-        try {
-            res.sendStatus(200);
-        } catch (err) {
-            res.sendStatus(401);
-        }
-    });
-
 }
 
 module.exports = cooker;

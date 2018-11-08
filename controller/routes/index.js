@@ -20,9 +20,13 @@ const index = (app) => {
         const logCooker = await Cooker.find({
             where: {
                 email: req.body.email
-            }
+            },
+            include : [
+                {
+                    model : Calendar
+                }
+            ]
         });
-
         if (logCooker) {
             bcrypt.compare(req.body.password, logCooker.password, (err, pass) => {
                 if (pass) {
@@ -285,8 +289,9 @@ const index = (app) => {
 
             });
             fs.readFile(`public/images/${menu.picture}`, function (err, data) {
+
                 if (err) {
-                    return console.log(err);
+                    return console.log(err, 'cannot get image');
                 }
                 res.contentType('image/png');
                 res.end(data, 'binary');
