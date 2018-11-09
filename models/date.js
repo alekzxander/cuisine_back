@@ -1,7 +1,7 @@
 const sequelizeDb = require('../database/db');
 const Sequelize = require('sequelize');
 
-const calendarModel = sequelizeDb.define('calendar', {
+const dateBookingModel = sequelizeDb.define('date', {
 
     date: {
         type: Sequelize.DATE,
@@ -11,7 +11,11 @@ const calendarModel = sequelizeDb.define('calendar', {
     cooker_id: {
         type: Sequelize.INTEGER,
         allowNull: false
+    },
+    book: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false
     }
 });
 
-module.exports = calendarModel;
+module.exports = dateBookingModel;

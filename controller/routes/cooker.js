@@ -1,7 +1,7 @@
 const Cooker = require('../../models/cooker');
 const Menu = require('../../models/menu');
 const Type_has_menu = require('../../models/type_has_menu');
-const Calendar = require('../../models/calendar');
+const Date_booking = require('../../models/date');
 const Comment = require('../../models/comment');
 const jwt = require('jsonwebtoken');
 const auth = require('../config/auth');
@@ -51,7 +51,12 @@ const cooker = (app, sequelize) => {
                 where: {
                     email: userAuth.data,
                     id: req.params.id
-                }
+                },
+                include: [
+                    {
+                        model: Date_booking
+                    }
+                ]
             });
             let targetPath;
             let tmpPath;
@@ -286,35 +291,47 @@ const cooker = (app, sequelize) => {
             }
         }
     });
-    app.post('/calendar',auth.verifyToken,  async (req, res) => {
+    app.post('/date', auth.verifyToken, async (req, res) => {
         const userAuth = auth.checkToken(req.token);
         if (!userAuth) {
             res.status(401).json({ message: 'User not connected' })
         } else {
-        sequelize.transaction().then(async t => {
-            try{
-                const cooker = await Cooker.findOne({
-                    where: {
-                        email: userAuth.data
-                    }
-                },{ transaction: t });
-                const booking = await Calendar.destroy({
-                    where : {
-                        cooker_id : cooker.id
-                    }
-                },{ transaction: t });
+            sequelize.transaction().then(async t => {
+                try {
+                    const cooker = await Cooker.findOne({
+                        where: {
+                            email: userAuth.data
+                        }
+                    }, { transaction: t });
 
-                req.body.date.forEach(async (date) => {
-                    await Calendar.create({ cooker_id: cooker.id, date })
-                }, { transaction: t });
-                await t.commit();
-            res.sendStatus(200);
-            }catch(err){
-            res.sendStatus(401);
-            await t.rollback();
+                    const booking = await Date_booking.destroy({
+                        where: {
+                            cooker_id: cooker.id,
+                            book: false
+                        }
+                    });
+
+                    const dateBook = req.body.date.map((date) => {
+                        return {
+                            date,
+                            cooker_id: cooker.id,
+                            book: false
+                        }
+                    }, { transaction: t });
+                    console.log(dateBook, 'new array')
+                    // const arrayResolve = await Promise.all(dateBook)
+                    // console.log(arrayResolve, 'RESOLVE ARRAY')
+                    const dates = await Date_booking.bulkCreate(dateBook, { transaction: t })
+                    console.log(dates, 'GET DATES')
+                    await t.commit();
+                    res.status(200).json({ dates });
+                } catch (err) {
+                    res.sendStatus(401);
+                    await t.rollback();
+                    console.log(err)
                 }
-        });
-    }
+            });
+        }
     });
     app.get('/menus_cooker/:id', async (req, res) => {
         const menus = await Menu.findAll({

@@ -1,8 +1,8 @@
 const Menu = require('../../models/menu');
 const Cooker = require('../../models/cooker');
-const Calendar = require('../../models/calendar');
+const Date_booking = require('../../models/date');
 const User = require('../../models/user');
-const Transaction = require('../../models/transaction');
+const Reservation = require('../../models/reservation');
 const Comment = require('../../models/comment');
 const Type_has_menu = require('../../models/type_has_menu');
 const Type = require('../../models/type');
@@ -21,9 +21,9 @@ const index = (app) => {
             where: {
                 email: req.body.email
             },
-            include : [
+            include: [
                 {
-                    model : Calendar
+                    model: Date_booking
                 }
             ]
         });
@@ -67,6 +67,11 @@ const index = (app) => {
                     ]
                 }, {
                     model: Cooker,
+                    include: [
+                        {
+                            model: Date_booking
+                        }
+                    ]
 
                 }, {
                     model: Type_has_menu,
@@ -79,7 +84,7 @@ const index = (app) => {
             ],
 
         });
-        const calendar = await Calendar.findAll({
+        const calendar = await Date_booking.findAll({
             where: {
                 cooker_id: menu.cooker_id
             }
@@ -99,7 +104,7 @@ const index = (app) => {
             },
             include: [
                 {
-                    model: Transaction,
+                    model: Reservation,
                     include: [
                         {
                             model: Menu

@@ -1,7 +1,11 @@
 const sequelizeDb = require('../database/db');
 const Sequelize = require('sequelize');
 
-const transactionModel = sequelizeDb.define('transactions', {
+const transactionModel = sequelizeDb.define('reservation', {
+    nb_guest: {
+        type: Sequelize.INTEGER,
+        allowNull: false
+    },
 
     total_price: {
         type: Sequelize.STRING,
