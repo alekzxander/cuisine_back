@@ -13,7 +13,7 @@ const Comment = require('./models/comment');
 const Type_has_menu = require('./models/type_has_menu');
 const Type = require('./models/type');
 const path = require('path');
-const Date_booking = require('./models/date');
+const Date_booking = require('./models/date_booking');
 
 app.use(bodyParser.json({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -28,6 +28,7 @@ app.use(function (req, res, next) {
 Menu.belongsTo(Cooker);
 Menu.hasMany(Reservation);
 Reservation.belongsTo(Menu);
+Reservation.belongsTo(Date_booking);
 User.hasMany(Reservation);
 Reservation.belongsTo(User);
 Cooker.hasMany(Menu);
@@ -41,9 +42,8 @@ Type.hasMany(Type_has_menu);
 Type_has_menu.belongsTo(Type);
 Cooker.hasMany(Date_booking);
 Date_booking.belongsTo(Cooker);
-
 index(app);
-user(app);
+user(app, sequelize);
 cooker(app, sequelize);
 
 

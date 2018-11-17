@@ -1,7 +1,7 @@
 const Cooker = require('../../models/cooker');
 const Menu = require('../../models/menu');
 const Type_has_menu = require('../../models/type_has_menu');
-const Date_booking = require('../../models/date');
+const Date_booking = require('../../models/date_booking');
 const Comment = require('../../models/comment');
 const jwt = require('jsonwebtoken');
 const auth = require('../config/auth');
@@ -116,13 +116,11 @@ const cooker = (app, sequelize) => {
                             email: userAuth.data,
                         }
                     }, { transaction: t });
-                    console.log(imgOrigin)
                     const menu = {
                         title: meta.title,
                         start: meta.start,
                         dish: meta.dish,
                         dessert: meta.dessert,
-                        nb_guest: 2,
                         price: meta.price,
                         cooker_id: cooker.id,
                         draft: meta.draft,
@@ -131,41 +129,23 @@ const cooker = (app, sequelize) => {
                     const createMenu = await Menu.create(menu, { transaction: t });
                     meta.type.map(async (type) => {
                         if (type.length > 0) {
-                            await Type_has_menu.create({ type_id: type, menu_id: createMenu.id }, { transaction: t })
+                            await Type_has_menu.create({ type_id: type, menu_id: createMenu.id })
                         }
                     });
-                    const newMenu = await Menu.findOne({
-                        where: {
-                            id: createMenu.id
-                        },
-                        include: [
-                            {
-                                model: Type_has_menu,
-                                include: [
-                                    {
-                                        model: Type
-                                    }
-                                ]
-                            }
-                        ]
-                    }, { transaction: t });
+                    if (fileToUpload) {
+                        const src = fs.createReadStream(tmpPath);
+                        const dest = fs.createWriteStream(targetPath);
+                        src.pipe(dest);
+                        fs.unlink(tmpPath);
+                    }
                     await t.commit();
+                    res.json({ newMenu: createMenu });
                 } catch (err) {
-                    console.log('err', err)
                     await t.rollback();
+                    res.sendStatus(401);
                 }
             });
-            if (fileToUpload) {
-                const src = fs.createReadStream(tmpPath);
-                const dest = fs.createWriteStream(targetPath);
-                src.pipe(dest);
-                fs.unlink(tmpPath);
-            }
-            try {
-                res.json({ createMenu: newMenu });
-            } catch (err) {
-                res.sendStatus(401);
-            }
+
         }
     });
     app.delete('/menu/:id', auth.verifyToken, async (req, res) => {
@@ -203,6 +183,7 @@ const cooker = (app, sequelize) => {
         const fileToUpload = req.file;
         const meta = JSON.parse(req.body.data);
         if (!userAuth) {
+            console.log('ERROR NOT AUTH')
             res.status(401).json({ message: 'User not connected' })
         } else {
             sequelize.transaction().then(async t => {
@@ -216,7 +197,17 @@ const cooker = (app, sequelize) => {
                     const menu = await Menu.findOne({
                         where: {
                             id: req.params.id
-                        }
+                        },
+                        include: [
+                            {
+                                model: Type_has_menu,
+                                include: [
+                                    {
+                                        model: Type
+                                    }
+                                ]
+                            }
+                        ]
                     }, { transaction: t });
                     let targetPath;
                     let tmpPath;
@@ -257,38 +248,20 @@ const cooker = (app, sequelize) => {
                         picture: imgOrigin
                     };
                     const menuUpdated = await menu.update(metaMenu, { transaction: t });
-                    const menuType = await Menu.findOne({
-                        where: {
-                            id: menuUpdated.id
-                        },
-                        include: [
-                            {
-                                model: Type_has_menu,
-                                include: [
-                                    {
-                                        model: Type
-                                    }
-                                ]
-                            }
-                        ]
-                    }, { transaction: t });
+
                     await t.commit();
+                    if (fileToUpload) {
+                        const src = fs.createReadStream(tmpPath);
+                        const dest = fs.createWriteStream(targetPath);
+                        src.pipe(dest);
+                        fs.unlink(tmpPath);
+                    }
+                    res.json({ menu: menuUpdated });
                 } catch (err) {
-                    console.log(err, 'error transaction')
                     await t.rollback();
+                    res.sendStatus(401);
                 }
             });
-            if (fileToUpload) {
-                const src = fs.createReadStream(tmpPath);
-                const dest = fs.createWriteStream(targetPath);
-                src.pipe(dest);
-                fs.unlink(tmpPath);
-            }
-            try {
-                res.json({ menu: menuType });
-            } catch (err) {
-                res.sendStatus(401);
-            }
         }
     });
     app.post('/date', auth.verifyToken, async (req, res) => {
@@ -318,9 +291,6 @@ const cooker = (app, sequelize) => {
                             book: false
                         }
                     }, { transaction: t });
-                    console.log(dateBook, 'new array')
-                    // const arrayResolve = await Promise.all(dateBook)
-                    // console.log(arrayResolve, 'RESOLVE ARRAY')
                     const dates = await Date_booking.bulkCreate(dateBook, { transaction: t })
                     console.log(dates, 'GET DATES')
                     await t.commit();
@@ -331,6 +301,23 @@ const cooker = (app, sequelize) => {
                     console.log(err)
                 }
             });
+        }
+    });
+    app.get('/menu_type/:menuId', async (req, res) => {
+        const types = await Type_has_menu.findAll({
+            where: {
+                menu_id: req.params.menuId
+            },
+            include: [
+                {
+                    model: Type
+                }
+            ]
+        });
+        try {
+            res.json({ types })
+        } catch (err) {
+            res.sendStatus(304)
         }
     });
     app.get('/menus_cooker/:id', async (req, res) => {

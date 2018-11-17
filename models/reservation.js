@@ -6,14 +6,9 @@ const transactionModel = sequelizeDb.define('reservation', {
         type: Sequelize.INTEGER,
         allowNull: false
     },
-
-    total_price: {
-        type: Sequelize.STRING,
-        allowNull: false
-    },
-    date: {
+    date_id: {
         type: Sequelize.DATE,
-        allowNull: false
+        allowNull: false,
     },
     user_id: {
         type: Sequelize.INTEGER,
@@ -22,7 +17,7 @@ const transactionModel = sequelizeDb.define('reservation', {
     },
     menu_id: {
         type: Sequelize.INTEGER,
-        allowNull: false
+        allowNull: false,
     }
 });
 

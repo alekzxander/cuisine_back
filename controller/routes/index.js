@@ -1,6 +1,6 @@
 const Menu = require('../../models/menu');
 const Cooker = require('../../models/cooker');
-const Date_booking = require('../../models/date');
+const Date_booking = require('../../models/date_booking');
 const User = require('../../models/user');
 const Reservation = require('../../models/reservation');
 const Comment = require('../../models/comment');

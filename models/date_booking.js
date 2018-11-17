@@ -1,7 +1,7 @@
 const sequelizeDb = require('../database/db');
 const Sequelize = require('sequelize');
 
-const dateBookingModel = sequelizeDb.define('date', {
+const dateBookingModel = sequelizeDb.define('date_booking', {
 
     date: {
         type: Sequelize.DATE,

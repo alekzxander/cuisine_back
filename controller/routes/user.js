@@ -5,13 +5,15 @@ const bcrypt = require('bcrypt-nodejs');
 const jwt = require('jsonwebtoken');
 const auth = require('../config/auth');
 const multer = require('multer');
+const Reservation = require('../../models/reservation');
 const fs = require('fs');
-
+const Date_booking = require('../../models/date_booking');
+const Menu = require('../../models/menu');
 const upload = multer({
     dest: 'public/images', // upload target directory
 });
 
-const user = (app) => {
+const user = (app, sequelize) => {
     app.post('/profil-user', async (req, res) => {
         const verifyUser = await User.find({
             where: {
@@ -106,8 +108,83 @@ const user = (app) => {
             res.sendStatus(401);
         }
     });
-    app.post('/get-image', upload.single('img'), async (req, res) => {
-        res.json({ resp: req.file })
+
+    app.post('/reservation/:menuId/:dateId', auth.verifyToken, async (req, res) => {
+        const userAuth = auth.checkToken(req.token);
+        if (!userAuth) {
+            res.status(401).json({ message: 'User not connected' })
+        } else {
+            sequelize.transaction().then(async t => {
+                try {
+                    const findUser = await User.findOne({
+                        where: {
+                            email: userAuth.data
+                        }
+                    }, { transaction: t });
+                    if (findUser) {
+                        // Check user is not a cooker
+                        const findMenu = await Menu.findOne({
+                            where: {
+                                id: req.params.menuId
+                            }
+                        }, { transaction: t });
+                        // get menu select by user
+                        const findCooker = await Cooker.findOne({
+                            where: {
+                                id: findMenu.cooker_id
+                            }
+                        }, { transaction: t });
+                        // Get cooker by menu id
+                        const findDate = await Date_booking.findAll({
+                            where: {
+                                cooker_id: findCooker.id,
+                                book: false
+                            },
+                        }, { transaction: t });
+                        // get all date from cooker not book
+                        const dateBooking = await Date_booking.findOne({
+                            where: {
+                                id: req.params.dateId
+                            },
+                        }, { transaction: t });
+                        let datesId = [];
+                        findDate.forEach((date) => {
+                            datesId.push(date.id)
+                        });
+                        // Get date select by user
+                        const compareDate = datesId.includes(dateBooking.id);
+                        // check date is exist
+                        if (compareDate) {
+                            // if date exist update date for render booking
+                            await dateBooking.update({ book: true }, { transaction: t });
+                            const reservation = {
+                                nb_guest: req.body.guest,
+                                date_id: dateBooking.id,
+                                user_id: findUser.id,
+                                menu_id: findMenu.id
+                            }
+                            const createReservation = await Reservation.create(reservation, { transaction: t })
+                            res.status(200).json()
+                        } else {
+                            console.log('Error date')
+                            res.status(300).json({ message: 'Date unavailable' })
+                        }
+                        t.commit();
+                    } else {
+                        res.status(401).json({ message: 'Cooker cannot book menu' })
+                    }
+                } catch (err) {
+                    t.rollback();
+                    console.log(err)
+                    res.status(300);
+                }
+
+            });
+
+
+
+        }
+
     });
 };
 
