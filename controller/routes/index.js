@@ -16,6 +16,20 @@ const index = (app) => {
             where: {
                 email: req.body.email
             },
+            include: [
+                {
+                    model: Reservation,
+                    attributes: ['nb_guest', 'commented', 'id'],
+                    include: [
+                        {
+                            model: Date_booking,
+                        },
+                        {
+                            model: Menu
+                        }
+                    ]
+                }
+            ]
         });
         const logCooker = await Cooker.find({
             where: {
@@ -23,7 +37,23 @@ const index = (app) => {
             },
             include: [
                 {
-                    model: Date_booking
+                    model: Date_booking,
+                    include: [
+                        {
+                            model: Reservation,
+                            include: [
+                                {
+                                    model: User,
+                                },
+                                {
+                                    model: Menu
+                                },
+                                {
+                                    model: Date_booking
+                                }
+                            ]
+                        }
+                    ]
                 }
             ]
         });
@@ -69,7 +99,10 @@ const index = (app) => {
                     model: Cooker,
                     include: [
                         {
-                            model: Date_booking
+                            model: Date_booking,
+                            where: {
+                                book: false
+                            }
                         }
                     ]
 
@@ -95,47 +128,7 @@ const index = (app) => {
             res.sendStatus(401);
         }
     });
-    app.get('/profil-user/:id', async (req, res) => {
-        /// condition pour accéder à cette page avec un middleware
-        /// verification que l'id correspond bien à celle de l'utilisateur connecté
-        const user = await User.findOne({
-            where: {
-                id: req.params.id
-            },
-            include: [
-                {
-                    model: Reservation,
-                    include: [
-                        {
-                            model: Menu
-                        }
-                    ]
-                }
-            ]
-        });
-        try {
-            res.json({ user });
-        } catch (err) {
-            res.sendStatus(401);
-        }
-    });
-    app.get('/profil-cooker/:id', async (req, res) => {
-        const cooker = await Cooker.findOne({
-            where: {
-                id: req.params.id
-            },
-            include: [
-                {
-                    model: Menu
-                }
-            ]
-        });
-        try {
-            res.json({ cooker });
-        } catch (err) {
-            res.sendStatus(401);
-        }
-    });
+
     app.get('/comments', async (req, res) => {
         const comments = await Comment.findAll({
             include: [

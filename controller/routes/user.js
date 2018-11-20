@@ -70,7 +70,21 @@ const user = (app, sequelize) => {
                 where: {
                     email: userAuth.data,
                     id: req.params.id
-                }
+                },
+                include: [
+                    {
+                        model: Reservation,
+                        attributes: ['nb_guest', 'commented', 'id'],
+                        include: [
+                            {
+                                model: Date_booking,
+                            },
+                            {
+                                model: Menu
+                            }
+                        ]
+                    }
+                ]
             });
             const updateUser = {
                 last_name: meta.lastname,
@@ -93,22 +107,52 @@ const user = (app, sequelize) => {
             }
         }
     });
-    app.post('/comment/:menu_id', async (req, res) => {
-        // Recuperer l'id utilisateur avec le middleware du token
-        const comment = {
-            body: req.body.body,
-            score: req.body.score,
-            user_id: 2,
-            menu_id: req.params.menu_id
-        };
-        const createComment = await Comment.create(comment);
-        try {
-            res.json({ createComment });
-        } catch (err) {
-            res.sendStatus(401);
+    app.post('/comment/:menu_id/:reservation_id', auth.verifyToken, async (req, res) => {
+        const userAuth = auth.checkToken(req.token);
+        if (!userAuth) {
+            res.status(401).json({ message: 'User not connected' })
+        } else {
+            sequelize.transaction().then(async t => {
+                try {
+                    const findUser = await User.findOne({
+                        where: {
+                            email: userAuth.data
+                        }
+                    }, { transaction: t });
+                    const comment = {
+                        body: req.body.comment,
+                        score: req.body.note,
+                        user_id: findUser.id,
+                        menu_id: req.params.menu_id
+                    };
+                    const createComment = await Comment.create(comment, { transaction: t });
+                    await Reservation.update(
+                        {
+                            commented: true
+                        },
+                        {
+                            where: {
+                                id: req.params.reservation_id
+                            }
+                        }, { transaction: t });
+                    t.commit();
+                    res.json({ createComment });
+                } catch (err) {
+                    t.rollback();
+                    console.log(err)
+                    res.status(300);
+                }
+            });
         }
     });
-
+    app.get('/date/:id', async (req, res) => {
+        const date = await Date_booking.findOne({
+            where: {
+                id: req.params.id
+            }
+        });
+        res.json({ booking: date })
+    })
     app.post('/reservation/:menuId/:dateId', auth.verifyToken, async (req, res) => {
         const userAuth = auth.checkToken(req.token);
         if (!userAuth) {
@@ -151,6 +195,7 @@ const user = (app, sequelize) => {
                         findDate.forEach((date) => {
                             datesId.push(date.id)
                         });
+                        console.log(datesId, dateBooking)
                         // Get date select by user
                         const compareDate = datesId.includes(dateBooking.id);
                         // check date is exist
@@ -158,13 +203,15 @@ const user = (app, sequelize) => {
                             // if date exist update date for render booking
                             await dateBooking.update({ book: true }, { transaction: t });
                             const reservation = {
-                                nb_guest: req.body.guest,
-                                date_id: dateBooking.id,
+                                nb_guest: req.body.nbGuest,
+                                date_booking_id: dateBooking.id,
                                 user_id: findUser.id,
-                                menu_id: findMenu.id
+                                menu_id: findMenu.id,
+                                commented: false
                             }
-                            const createReservation = await Reservation.create(reservation, { transaction: t })
-                            res.status(200).json()
+                            const createReservation = await Reservation.create(reservation, { transaction: t });
+
+                            res.status(200).json({ reservation: createReservation })
                         } else {
                             console.log('Error date')
                             res.status(300).json({ message: 'Date unavailable' })
@@ -178,13 +225,8 @@ const user = (app, sequelize) => {
                     console.log(err)
                     res.status(300);
                 }
-
             });
-
-
-
         }
-
     });
 };
 

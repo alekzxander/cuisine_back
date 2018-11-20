@@ -30,6 +30,7 @@ Menu.hasMany(Reservation);
 Reservation.belongsTo(Menu);
 Reservation.belongsTo(Date_booking);
 User.hasMany(Reservation);
+Date_booking.hasMany(Reservation)
 Reservation.belongsTo(User);
 Cooker.hasMany(Menu);
 Menu.hasMany(Comment, { onDelete: 'cascade', hooks: true });
