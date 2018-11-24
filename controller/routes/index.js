@@ -63,7 +63,7 @@ const index = (app) => {
                     const token = jwt.sign({ data: req.body.email, exp: Math.floor(Date.now() / 1000) + (60 * 60) }, 'secret');
                     res.json({ logCooker, token, type: 'cooker' });
                 } else {
-                    res.json({ message: 'Error password or email' });
+                    res.json({ type: 'error' });
                 }
             });
 
@@ -74,11 +74,11 @@ const index = (app) => {
                     const token = jwt.sign({ data: req.body.email, exp: Math.floor(Date.now() / 1000) + (60 * 60) }, 'secret');
                     res.json({ logUser, token, type: 'user' });
                 } else {
-                    res.json({ message: 'Error password or email' });
+                    res.json({ type: 'error' });
                 }
             });
         } else {
-            res.json({ message: 'Error password or email' })
+            res.json({ type: 'error' })
         }
     });
 

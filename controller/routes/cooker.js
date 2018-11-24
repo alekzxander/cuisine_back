@@ -8,6 +8,9 @@ const auth = require('../config/auth');
 const multer = require('multer');
 const fs = require('fs');
 const Type = require('../../models/type');
+const Reservation = require('../../models/reservation');
+const User = require('../../models/user');
+
 const upload = multer({
     dest: 'public/images', // upload target directory
 });
@@ -26,17 +29,45 @@ const cooker = (app, sequelize) => {
                 last_name: req.body.lastname,
                 first_name: req.body.firstname,
                 email: req.body.email,
-                password
+                password,
+                picture: 'user.png'
             };
             const logCooker = await Cooker.create(cooker);
+            const cook = await Cooker.findOne({
+                where: {
+                    id: logCooker.id
+                },
+                include: [
+                    {
+                        model: Date_booking,
+                        include: [
+                            {
+                                model: Reservation,
+                                include: [
+                                    {
+                                        model: User,
+                                    },
+                                    {
+                                        model: Menu
+                                    },
+                                    {
+                                        model: Date_booking
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            });
+
             const token = jwt.sign({ data: req.body.email, exp: Math.floor(Date.now() / 1000) + (60 * 60) }, 'secret');
             try {
-                res.json({ logCooker, token, type: 'cooker' });
+                res.json({ logCooker: cook, token, type: 'cooker' });
             } catch (err) {
                 res.sendStatus(401)
             }
         } else {
-            res.json({ message: 'Cooker already exist' })
+            res.status(300).json({ message: 'Cooker already exist' })
         }
 
     });
@@ -54,7 +85,23 @@ const cooker = (app, sequelize) => {
                 },
                 include: [
                     {
-                        model: Date_booking
+                        model: Date_booking,
+                        include: [
+                            {
+                                model: Reservation,
+                                include: [
+                                    {
+                                        model: User,
+                                    },
+                                    {
+                                        model: Menu
+                                    },
+                                    {
+                                        model: Date_booking
+                                    }
+                                ]
+                            }
+                        ]
                     }
                 ]
             });
@@ -107,7 +154,7 @@ const cooker = (app, sequelize) => {
                 tmpPath = fileToUpload.path;
                 imgOrigin = `${fileToUpload.filename}.${extension[1]}`;
             } else {
-                imgOrigin = 'user.png';
+                imgOrigin = 'mer.png';
             }
             sequelize.transaction().then(async t => {
                 try {

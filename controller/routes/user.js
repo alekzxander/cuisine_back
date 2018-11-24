@@ -35,13 +35,12 @@ const user = (app, sequelize) => {
             const logUser = await User.create(user);
             const token = jwt.sign({ data: req.body.email, exp: Math.floor(Date.now() / 1000) + (60 * 60) }, 'secret');
             try {
-                res.json({ logUser, token, type: 'user' })
+                res.json({ logUser, token, type: 'user', message: `Votre inscription à était enregistrer avec succes, vous pouvez désormais avoir accés à votre profil !` })
             } catch (err) {
                 res.json({ err })
             }
         } else {
-            console.log('USER EXIST')
-            res.json({ message: 'user already exist' })
+            res.json({ message: 'Désolé mais ce compte existe déjà' })
         }
 
     });
@@ -57,15 +56,6 @@ const user = (app, sequelize) => {
             let targetPath;
             let tmpPath;
             let imgOrigin;
-            if (fileToUpload) {
-                const extension = fileToUpload.mimetype.split('/');
-                targetPath = `public/images/${fileToUpload.filename}.${extension[1]}`;
-                tmpPath = fileToUpload.path;
-                imgOrigin = `${fileToUpload.filename}.${extension[1]}`;
-            } else {
-                imgOrigin = 'user.png';
-            }
-            console.log(imgOrigin)
             const user = await User.findOne({
                 where: {
                     email: userAuth.data,
@@ -86,6 +76,14 @@ const user = (app, sequelize) => {
                     }
                 ]
             });
+            if (fileToUpload) {
+                const extension = fileToUpload.mimetype.split('/');
+                targetPath = `public/images/${fileToUpload.filename}.${extension[1]}`;
+                tmpPath = fileToUpload.path;
+                imgOrigin = `${fileToUpload.filename}.${extension[1]}`;
+            } else {
+                imgOrigin = user.picture;
+            }
             const updateUser = {
                 last_name: meta.lastname,
                 first_name: meta.firstname,
