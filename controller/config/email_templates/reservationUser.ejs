@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Confirmation de reservation</title>
+    <style>
+        <%- include('./mailStylesheet.css');
+        %>
+    </style>
+</head>
+
+<body bgcolor="#f6f6f6">
+
+    <!-- body -->
+    <table class="body-wrap" bgcolor="#f6f6f6">
+        <tr>
+            <td></td>
+            <td class="container" bgcolor="#FFFFFF">
+
+                <!-- content -->
+                <div class="content">
+                    <table>
+                        <tr>
+                            <td>
+                                <h3>Bonjour
+                                    <%= userName %>.</h3>
+
+                                <p>Nous vous confirmons vôtre réservation pour la date du
+                                    <%= date %>
+                                </p>
+                                <p>Votre chef sera
+                                    <%= cookerName %>
+                                </p>
+                                <p>Il vous servira le menu
+                                    <strong><%= title %></strong> pour
+                                    <strong><%= guest %> personnes.</p></strong>
+                                    <div>
+                                        <h4>Le chef vous appelera sous-peu pour convenir d'une heure de rendez-vous chez vous.</h4>
+                                    </div>
+                                    <div>
+                                        <p>Coût total de votre réservation
+                                            <strong><%= price %> €</strong>
+                                        </p>
+                                    </div>
+                                    <h4 style="text-align : center;">Voici le détails de vôtre menu</h4>
+                                    <div class="menu">
+
+                                        <h5>Entrée</h5>
+                                        <p>
+                                            <%= start %>
+                                        </p>
+                                        <h5>Plat principal</h5>
+                                        <p>
+                                            <%= dish %>
+                                        </p>
+                                        <h5>Dessert</h5>
+                                        <p>
+                                            <%= dessert %>
+                                        </p>
+                                    </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <!-- /content -->
+
+            </td>
+            <td></td>
+        </tr>
+    </table>
+    <!-- /body -->
+
+    <!-- footer -->
+    <table class="footer-wrap">
+        <tr>
+            <td></td>
+            <td class="container">
+
+                <!-- content -->
+                <div class="content">
+                    <table>
+                        <tr>
+                            <td align="center">
+                                <p>A bientôt sur Cuizine Pou Zot</p>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <!-- /content -->
+
+            </td>
+            <td></td>
+        </tr>
+    </table>
+    <!-- /footer -->
+
+</body>
+
+</html>

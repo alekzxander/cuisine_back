@@ -32,6 +32,8 @@ Reservation.belongsTo(Date_booking);
 User.hasMany(Reservation);
 Date_booking.hasMany(Reservation)
 Reservation.belongsTo(User);
+Cooker.hasMany(Reservation);
+Reservation.belongsTo(Cooker);
 Cooker.hasMany(Menu);
 Menu.hasMany(Comment, { onDelete: 'cascade', hooks: true });
 User.hasMany(Comment, { onDelete: 'cascade', hooks: true });
@@ -47,5 +49,6 @@ index(app);
 user(app, sequelize);
 cooker(app, sequelize);
 
-
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'ejs');
 app.listen(3001);

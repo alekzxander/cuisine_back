@@ -11,6 +11,9 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const index = (app) => {
 
+    app.get('/test', (req, res) => {
+        res.render('test.ejs')
+    })
     app.post('/login', async (req, res) => {
         const logUser = await User.find({
             where: {
@@ -37,21 +40,19 @@ const index = (app) => {
             },
             include: [
                 {
-                    model: Date_booking,
+                    model: Date_booking
+                },
+                {
+                    model: Reservation,
                     include: [
                         {
-                            model: Reservation,
-                            include: [
-                                {
-                                    model: User,
-                                },
-                                {
-                                    model: Menu
-                                },
-                                {
-                                    model: Date_booking
-                                }
-                            ]
+                            model: User,
+                        },
+                        {
+                            model: Menu
+                        },
+                        {
+                            model: Date_booking
                         }
                     ]
                 }
@@ -62,6 +63,8 @@ const index = (app) => {
                 if (pass) {
                     const token = jwt.sign({ data: req.body.email, exp: Math.floor(Date.now() / 1000) + (60 * 60) }, 'secret');
                     res.json({ logCooker, token, type: 'cooker' });
+                    // console.log('COOKER LOGIN')
+                    // res.redirect('/test');
                 } else {
                     res.json({ type: 'error' });
                 }

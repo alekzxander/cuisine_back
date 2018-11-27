@@ -39,35 +39,47 @@ const cooker = (app, sequelize) => {
                 },
                 include: [
                     {
-                        model: Date_booking,
+                        model: Reservation,
                         include: [
                             {
-                                model: Reservation,
-                                include: [
-                                    {
-                                        model: User,
-                                    },
-                                    {
-                                        model: Menu
-                                    },
-                                    {
-                                        model: Date_booking
-                                    }
-                                ]
+                                model: User,
+                            },
+                            {
+                                model: Menu
+                            },
+                            {
+                                model: Date_booking
                             }
                         ]
+                    }, {
+                        model: Date_booking,
                     }
                 ]
             });
 
             const token = jwt.sign({ data: req.body.email, exp: Math.floor(Date.now() / 1000) + (60 * 60) }, 'secret');
             try {
-                res.json({ logCooker: cook, token, type: 'cooker' });
+                const mailContent = await Email.registerCooker(
+                    req.body.firstname,
+                );
+                const mailOptions = {
+                    from: '"Cuizine Pou Zot" alekz.contact.webdev@gmail.com', // sender address
+                    to: req.body.email, // list of receivers
+                    subject: 'Inscription chez Cuizine Pou Zot', // Subject line
+                    html: mailContent,
+                };
+                Email.transporter.sendMail(mailOptions, (error, info) => {
+                    if (error) {
+                        console.log(error, 'ERROR MAIL NOT SEND')
+                    }
+                    console.log(info, 'INFO MAIL TO SEND')
+                });
+                res.json({ logCooker: cook, token, type: 'cooker', message: `Bienvenue parmis nous chef ${cook.first_name}, vous pouvez désormais avoir accés à votre profil !` });
             } catch (err) {
                 res.sendStatus(401)
             }
         } else {
-            res.status(300).json({ message: 'Cooker already exist' })
+            res.json({ message: 'Désolé mais il semblerait que ce compte exist déjà !' })
         }
 
     });
@@ -85,23 +97,20 @@ const cooker = (app, sequelize) => {
                 },
                 include: [
                     {
-                        model: Date_booking,
+                        model: Reservation,
                         include: [
                             {
-                                model: Reservation,
-                                include: [
-                                    {
-                                        model: User,
-                                    },
-                                    {
-                                        model: Menu
-                                    },
-                                    {
-                                        model: Date_booking
-                                    }
-                                ]
+                                model: User,
+                            },
+                            {
+                                model: Menu
+                            },
+                            {
+                                model: Date_booking
                             }
                         ]
+                    }, {
+                        model: Date_booking,
                     }
                 ]
             });
@@ -335,11 +344,10 @@ const cooker = (app, sequelize) => {
                         return {
                             date,
                             cooker_id: cooker.id,
-                            book: false
+                            book: false,
                         }
                     }, { transaction: t });
-                    const dates = await Date_booking.bulkCreate(dateBook, { transaction: t })
-                    console.log(dates, 'GET DATES')
+                    const dates = await Date_booking.bulkCreate(dateBook, { transaction: t });
                     await t.commit();
                     res.status(200).json({ dates });
                 } catch (err) {

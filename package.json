@@ -12,10 +12,12 @@
   "dependencies": {
     "bcrypt-nodejs": "0.0.3",
     "body-parser": "^1.18.3",
+    "ejs": "^2.6.1",
     "express": "^4.16.3",
     "jsonwebtoken": "^8.3.0",
     "multer": "^1.4.1",
     "mysql2": "^1.6.1",
+    "nodemailer": "^4.7.0",
     "nodemon": "^1.18.4",
     "sequelize": "^4.39.0"
   }

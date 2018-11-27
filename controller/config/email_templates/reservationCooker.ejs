@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Reservation d'un client</title>
+    <style>
+        <%- include('./mailStylesheet.css');
+        %>
+    </style>
+</head>
+
+<body bgcolor="#f6f6f6">
+
+    <!-- body -->
+    <table class="body-wrap" bgcolor="#f6f6f6">
+        <tr>
+            <td></td>
+            <td class="container" bgcolor="#FFFFFF">
+
+                <!-- content -->
+                <div class="content">
+                    <table>
+                        <tr>
+                            <td>
+                                <h3>Bonjour
+                                    <%= cookerName %>.</h3>
+
+                                <p>Nous avons le plaisir de vous annoncez qu'un client à réservé une de vos prestations le
+                                    <%= date %>
+                                </p>
+                                <div>
+                                    <h4>Voici les détails de votre prestations :</h4>
+                                    <h5>MENU : <strong><%= title %></strong></h5>
+                                    <h5>DATE : <strong><%= date %></strong></h5>
+                                    <h5>CONVIVES : <strong><%= guest %></strong></h5>
+                                    <h5>ADRESSE : <strong><%= adresse %></strong></h5>
+                                    <h5>TELEPHONE : <strong><%= phone %></strong></h5>
+                                </div>
+                                <div>
+                                    <p>Nous vous invitons à prendre contact avec le téléphone de ce client pour convenir de
+                                        l'heure du rendez-vous.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <!-- /content -->
+
+            </td>
+            <td></td>
+        </tr>
+    </table>
+    <!-- /body -->
+
+    <!-- footer -->
+    <table class="footer-wrap">
+        <tr>
+            <td></td>
+            <td class="container">
+
+                <!-- content -->
+                <div class="content">
+                    <table>
+                        <tr>
+                            <td align="center">
+                                <p>A bientôt sur Cuizine Pou Zot</p>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <!-- /content -->
+
+            </td>
+            <td></td>
+        </tr>
+    </table>
+    <!-- /footer -->
+
+</body>
+
+</html>

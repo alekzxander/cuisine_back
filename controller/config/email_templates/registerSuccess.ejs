@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Confirmation de l'enregistrement</title>
+    <style>
+        <%- include('./mailStylesheet.css');
+        %>
+    </style>
+</head>
+
+<body bgcolor="#f6f6f6">
+
+    <!-- body -->
+    <table class="body-wrap" bgcolor="#f6f6f6">
+        <tr>
+            <td></td>
+            <td class="container" bgcolor="#FFFFFF">
+
+                <!-- content -->
+                <div class="content">
+                    <table>
+                        <tr>
+                            <td>
+                                <h3>Bonjour
+                                    <%= firstname %>.</h3>
+                                <div>Bienvenue et merci pour votre inscription chez Cuizine Pou Zot !!</div>
+
+                                <div>Vous pouvez dès à présent vous connectez à votre profil et réservé des prestations !</div>
+
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <!-- /content -->
+
+            </td>
+            <td></td>
+        </tr>
+    </table>
+    <!-- /body -->
+
+    <!-- footer -->
+    <table class="footer-wrap">
+        <tr>
+            <td></td>
+            <td class="container">
+
+                <!-- content -->
+                <div class="content">
+                    <table>
+                        <tr>
+                            <td align="center">
+                                <p>A bientôt sur Cuizine Pou Zot</p>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <!-- /content -->
+
+            </td>
+            <td></td>
+        </tr>
+    </table>
+    <!-- /footer -->
+
+</body>
+
+</html>

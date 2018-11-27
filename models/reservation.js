@@ -2,7 +2,6 @@ const sequelizeDb = require('../database/db');
 const Sequelize = require('sequelize');
 
 const transactionModel = sequelizeDb.define('reservation', {
-
     nb_guest: {
         type: Sequelize.INTEGER,
         allowNull: false
@@ -14,7 +13,10 @@ const transactionModel = sequelizeDb.define('reservation', {
     user_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
-
+    },
+    cooker_id: {
+        type: Sequelize.INTEGER,
+        allowNull: false
     },
     menu_id: {
         type: Sequelize.INTEGER,

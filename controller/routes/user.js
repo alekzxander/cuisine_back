@@ -9,6 +9,9 @@ const Reservation = require('../../models/reservation');
 const fs = require('fs');
 const Date_booking = require('../../models/date_booking');
 const Menu = require('../../models/menu');
+const Email = require('../config/email');
+const moment = require('moment');
+
 const upload = multer({
     dest: 'public/images', // upload target directory
 });
@@ -22,7 +25,7 @@ const user = (app, sequelize) => {
         });
         if (!verifyUser) {
             const password = User.generateHash(req.body.password);
-            const user = {
+            const userInstance = {
                 last_name: req.body.lastname,
                 first_name: req.body.firstname,
                 password,
@@ -32,13 +35,46 @@ const user = (app, sequelize) => {
                 picture: 'user.png'
             };
 
-            const logUser = await User.create(user);
+            const user = await User.create(userInstance);
+            const logUser = await User.findOne({
+                where: {
+                    id: user.id
+                }, include: [
+                    {
+                        model: Reservation,
+                        attributes: ['nb_guest', 'commented', 'id'],
+                        include: [
+                            {
+                                model: Date_booking,
+                            },
+                            {
+                                model: Menu
+                            }
+                        ]
+                    }
+                ]
+            });
             const token = jwt.sign({ data: req.body.email, exp: Math.floor(Date.now() / 1000) + (60 * 60) }, 'secret');
-            try {
-                res.json({ logUser, token, type: 'user', message: `Votre inscription à était enregistrer avec succes, vous pouvez désormais avoir accés à votre profil !` })
-            } catch (err) {
-                res.json({ err })
-            }
+            const mailContent = await Email.sendSuccessRegister(
+                req.body.firstname,
+                req.body.lastname,
+            );
+            const mailOptions = {
+                from: '"Cuizine Pou Zot" alekz.contact.webdev@gmail.com', // sender address
+                to: req.body.email, // list of receivers
+                subject: 'Inscription chez Cuizine Pou Zot', // Subject line
+                html: mailContent,
+            };
+            console.log(mailOptions, 'MAIL INFO BEFORE SEND')
+            Email.transporter.sendMail(mailOptions, (error, info) => {
+                if (error) {
+                    console.log(error, 'ERROR MAIL NOT SEND')
+                }
+                console.log(info, 'INFO MAIL TO SEND')
+            });
+            res.json({ logUser, token, type: 'user', message: `Votre inscription à était enregistrer avec succes, vous pouvez désormais avoir accés à votre profil !` });
+
+
         } else {
             res.json({ message: 'Désolé mais ce compte existe déjà' })
         }
@@ -205,10 +241,55 @@ const user = (app, sequelize) => {
                                 date_booking_id: dateBooking.id,
                                 user_id: findUser.id,
                                 menu_id: findMenu.id,
-                                commented: false
-                            }
+                                commented: false,
+                                cooker_id: findCooker.id
+                            };
                             const createReservation = await Reservation.create(reservation, { transaction: t });
-
+                            const date = moment(dateBooking.date).format('DD-MM-YYYY');
+                            const totalPrice = findMenu.price * req.body.nbGuest;
+                            const mailContentUser = await Email.reservationUser(
+                                findUser.first_name,
+                                date,
+                                req.body.nbGuest,
+                                findCooker.first_name,
+                                findMenu.title,
+                                totalPrice,
+                                findMenu.start,
+                                findMenu.dish,
+                                findMenu.dessert
+                            );
+                            const mailContentCooker = await Email.reservationCooker(
+                                findCooker.first_name,
+                                date,
+                                findMenu.title,
+                                req.body.nbGuest,
+                                findUser.phone,
+                                findUser.adresse
+                            );
+                            const mailOptionsCooker = {
+                                from: '"Cuizine Pou Zot" alekz.contact.webdev@gmail.com', // sender address
+                                to: findCooker.email, // list of receivers
+                                subject: `Reservation du menu ${findMenu.title}`, // Subject line
+                                html: mailContentCooker,
+                            };
+                            const mailOptionsUser = {
+                                from: '"Cuizine Pou Zot" alekz.contact.webdev@gmail.com', // sender address
+                                to: findUser.email, // list of receivers
+                                subject: `Reservation du menu ${findMenu.title}`, // Subject line
+                                html: mailContentUser,
+                            };
+                            Email.transporter.sendMail(mailOptionsUser, (error, info) => {
+                                if (error) {
+                                    console.log(error, 'ERROR MAIL NOT SEND')
+                                }
+                                console.log(info, 'INFO MAIL TO SEND')
+                            });
+                            Email.transporter.sendMail(mailOptionsCooker, (error, info) => {
+                                if (error) {
+                                    console.log(error, 'ERROR MAIL NOT SEND')
+                                }
+                                console.log(info, 'INFO MAIL TO SEND')
+                            });
                             res.status(200).json({ reservation: createReservation })
                         } else {
                             console.log('Error date')
