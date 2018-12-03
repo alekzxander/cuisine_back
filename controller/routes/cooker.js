@@ -201,7 +201,6 @@ const cooker = (app, sequelize) => {
                     res.sendStatus(401);
                 }
             });
-
         }
     });
     app.delete('/menu/:id', auth.verifyToken, async (req, res) => {

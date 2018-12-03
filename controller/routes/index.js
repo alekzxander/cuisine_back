@@ -11,9 +11,6 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const index = (app) => {
 
-    app.get('/test', (req, res) => {
-        res.render('test.ejs')
-    })
     app.post('/login', async (req, res) => {
         const logUser = await User.find({
             where: {

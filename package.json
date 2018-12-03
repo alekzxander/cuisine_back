@@ -19,6 +19,7 @@
     "mysql2": "^1.6.1",
     "nodemailer": "^4.7.0",
     "nodemon": "^1.18.4",
+    "paypal-rest-sdk": "^1.8.1",
     "sequelize": "^4.39.0"
   }
 }

@@ -11,6 +11,7 @@ const Date_booking = require('../../models/date_booking');
 const Menu = require('../../models/menu');
 const Email = require('../config/email');
 const moment = require('moment');
+const paypal = require('paypal-rest-sdk');
 
 const upload = multer({
     dest: 'public/images', // upload target directory
@@ -187,6 +188,17 @@ const user = (app, sequelize) => {
         });
         res.json({ booking: date })
     })
+    paypal.configure({
+        'mode': 'sandbox', //sandbox or live
+        'client_id': 'AZAzch-GzjvCHHe6WTBNxCZx6tFZi_EUTx9ep181-jIWAuUNftaUr1GvHH7FqU13m0b-dNxaSbsst-EQ',
+        'client_secret': 'EEoPe8lGde4lFjDFZgV-GHFenTizfMdbfZkmPlPQubk_wlmsEJogWVKrQ8NIEhLQuOOKxFnFlrQYCC7J'
+    });
+
+    let userInstance;
+    let dateInstance;
+    let cookerInstance;
+    let menuInstance;
+    let guest;
     app.post('/reservation/:menuId/:dateId', auth.verifyToken, async (req, res) => {
         const userAuth = auth.checkToken(req.token);
         if (!userAuth) {
@@ -194,24 +206,28 @@ const user = (app, sequelize) => {
         } else {
             sequelize.transaction().then(async t => {
                 try {
+                    guest = req.body.nbGuest;
                     const findUser = await User.findOne({
                         where: {
                             email: userAuth.data
                         }
                     }, { transaction: t });
                     if (findUser) {
+                        userInstance = findUser;
                         // Check user is not a cooker
                         const findMenu = await Menu.findOne({
                             where: {
                                 id: req.params.menuId
                             }
                         }, { transaction: t });
+                        menuInstance = findMenu;
                         // get menu select by user
                         const findCooker = await Cooker.findOne({
                             where: {
                                 id: findMenu.cooker_id
                             }
                         }, { transaction: t });
+                        cookerInstance = findCooker;
                         // Get cooker by menu id
                         const findDate = await Date_booking.findAll({
                             where: {
@@ -225,72 +241,53 @@ const user = (app, sequelize) => {
                                 id: req.params.dateId
                             },
                         }, { transaction: t });
+                        dateInstance = dateBooking;
                         let datesId = [];
                         findDate.forEach((date) => {
                             datesId.push(date.id)
                         });
-                        console.log(datesId, dateBooking)
                         // Get date select by user
                         const compareDate = datesId.includes(dateBooking.id);
                         // check date is exist
                         if (compareDate) {
                             // if date exist update date for render booking
-                            await dateBooking.update({ book: true }, { transaction: t });
-                            const reservation = {
-                                nb_guest: req.body.nbGuest,
-                                date_booking_id: dateBooking.id,
-                                user_id: findUser.id,
-                                menu_id: findMenu.id,
-                                commented: false,
-                                cooker_id: findCooker.id
-                            };
-                            const createReservation = await Reservation.create(reservation, { transaction: t });
-                            const date = moment(dateBooking.date).format('DD-MM-YYYY');
                             const totalPrice = findMenu.price * req.body.nbGuest;
-                            const mailContentUser = await Email.reservationUser(
-                                findUser.first_name,
-                                date,
-                                req.body.nbGuest,
-                                findCooker.first_name,
-                                findMenu.title,
-                                totalPrice,
-                                findMenu.start,
-                                findMenu.dish,
-                                findMenu.dessert
-                            );
-                            const mailContentCooker = await Email.reservationCooker(
-                                findCooker.first_name,
-                                date,
-                                findMenu.title,
-                                req.body.nbGuest,
-                                findUser.phone,
-                                findUser.adresse
-                            );
-                            const mailOptionsCooker = {
-                                from: '"Cuizine Pou Zot" alekz.contact.webdev@gmail.com', // sender address
-                                to: findCooker.email, // list of receivers
-                                subject: `Reservation du menu ${findMenu.title}`, // Subject line
-                                html: mailContentCooker,
+                            const create_payment_json = {
+                                "intent": "sale",
+                                "payer": {
+                                    "payment_method": "paypal"
+                                },
+                                "redirect_urls": {
+                                    "return_url": `http://localhost:3001/executePayment/${totalPrice}`,
+                                    "cancel_url": "http://localhost:3001/cancelPayment"
+                                },
+                                "transactions": [{
+                                    "item_list": {
+                                        "items": [{
+                                            "name": "item",
+                                            "sku": "item",
+                                            "price": findMenu.price,
+                                            "currency": "USD",
+                                            "quantity": req.body.nbGuest
+                                        }]
+                                    },
+                                    "amount": {
+                                        "currency": "USD",
+                                        "total": totalPrice
+                                    },
+                                    "description": "This is the payment description."
+                                }]
                             };
-                            const mailOptionsUser = {
-                                from: '"Cuizine Pou Zot" alekz.contact.webdev@gmail.com', // sender address
-                                to: findUser.email, // list of receivers
-                                subject: `Reservation du menu ${findMenu.title}`, // Subject line
-                                html: mailContentUser,
-                            };
-                            Email.transporter.sendMail(mailOptionsUser, (error, info) => {
+                            paypal.payment.create(create_payment_json, function (error, payment) {
                                 if (error) {
-                                    console.log(error, 'ERROR MAIL NOT SEND')
+                                    throw error;
+                                    console.log(error)
+                                } else {
+                                    console.log("Create Payment Response");
+                                    console.log(payment);
+                                    res.json({ payment })
                                 }
-                                console.log(info, 'INFO MAIL TO SEND')
                             });
-                            Email.transporter.sendMail(mailOptionsCooker, (error, info) => {
-                                if (error) {
-                                    console.log(error, 'ERROR MAIL NOT SEND')
-                                }
-                                console.log(info, 'INFO MAIL TO SEND')
-                            });
-                            res.status(200).json({ reservation: createReservation })
                         } else {
                             console.log('Error date')
                             res.status(300).json({ message: 'Date unavailable' })
@@ -307,6 +304,93 @@ const user = (app, sequelize) => {
             });
         }
     });
+
+
+    app.get('/executePayment/:price', (req, res) => {
+        const paymentId = req.query.paymentId;
+        const payer_id = req.query.PayerID;
+        const execute_payment_json = {
+            "payer_id": payer_id,
+            "transactions": [{
+                "amount": {
+                    "currency": "USD",
+                    "total": req.params.price
+                }
+            }]
+        };
+        paypal.payment.execute(paymentId, execute_payment_json, async function (error, payment) {
+            if (error) {
+                console.log(error.response);
+                throw error;
+            } else {
+                console.log(payment)
+                await dateInstance.update({ book: true });
+                const reservation = {
+                    nb_guest: guest,
+                    date_booking_id: dateInstance.id,
+                    user_id: userInstance.id,
+                    menu_id: menuInstance.id,
+                    commented: false,
+                    cooker_id: cookerInstance.id
+                };
+                const createReservation = await Reservation.create(reservation);
+                const date = moment(dateInstance.date).format('DD-MM-YYYY');
+                const mailContentUser = await Email.reservationUser(
+                    userInstance.first_name,
+                    date,
+                    guest,
+                    userInstance.first_name,
+                    menuInstance.title,
+                    req.params.price,
+                    menuInstance.start,
+                    menuInstance.dish,
+                    menuInstance.dessert
+                );
+                const mailContentCooker = await Email.reservationCooker(
+                    cookerInstance.first_name,
+                    date,
+                    menuInstance.title,
+                    guest,
+                    userInstance.phone,
+                    userInstance.adresse
+                );
+                const mailOptionsCooker = {
+                    from: '"Cuizine Pou Zot" alekz.contact.webdev@gmail.com', // sender address
+                    to: cookerInstance.email, // list of receivers
+                    subject: `Reservation du menu ${menuInstance.title}`, // Subject line
+                    html: mailContentCooker,
+                };
+                const mailOptionsUser = {
+                    from: '"Cuizine Pou Zot" alekz.contact.webdev@gmail.com', // sender address
+                    to: userInstance.email, // list of receivers
+                    subject: `Reservation du menu ${menuInstance.title}`, // Subject line
+                    html: mailContentUser,
+                };
+                Email.transporter.sendMail(mailOptionsUser, (error, info) => {
+                    if (error) {
+                        console.log(error, 'ERROR MAIL NOT SEND')
+                    }
+                    console.log(info, 'INFO MAIL TO SEND')
+                });
+                Email.transporter.sendMail(mailOptionsCooker, (error, info) => {
+                    if (error) {
+                        console.log(error, 'ERROR MAIL NOT SEND')
+                    }
+                    console.log(info, 'INFO MAIL TO SEND')
+                });
+                // res.status(200).json({ reservation: createReservation })
+                console.log("Get Payment Response");
+                console.log(JSON.stringify(payment));
+                res.redirect('http://localhost:3000');
+            }
+        });
+    });
+    app.get('/cancelPayment', (req, res) => {
+        res.send('trasaction cancel')
+    });
+    // app.post('/payement', (req, res) => {
+
+    // });
 };
 
 module.exports = user;
