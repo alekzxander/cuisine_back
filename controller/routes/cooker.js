@@ -10,15 +10,17 @@ const fs = require('fs');
 const Type = require('../../models/type');
 const Reservation = require('../../models/reservation');
 const User = require('../../models/user');
-
+const Email = require('../config/email');
 const upload = multer({
     dest: 'public/images', // upload target directory
 });
+const dotEnv = require('dotenv');
+dotEnv.config();
 
 const cooker = (app, sequelize) => {
 
     app.post('/profil-cooker', async (req, res) => {
-        const verifyCooker = await Cooker.find({
+        const verifyCooker = await Cooker.findOne({
             where: {
                 email: req.body.email
             }
@@ -57,7 +59,7 @@ const cooker = (app, sequelize) => {
                 ]
             });
 
-            const token = jwt.sign({ data: req.body.email, exp: Math.floor(Date.now() / 1000) + (60 * 60) }, 'secret');
+            const token = jwt.sign({ data: req.body.email }, process.env.SECRET_TOKEN);
             try {
                 const mailContent = await Email.registerCooker(
                     req.body.firstname,
@@ -85,277 +87,257 @@ const cooker = (app, sequelize) => {
     });
     app.put('/profil-cooker/:id', auth.verifyToken, upload.single('avatar'), async (req, res) => {
         const fileToUpload = req.file;
-        const userAuth = auth.checkToken(req.token);
+        const userAuth = req.token;
         const meta = JSON.parse(req.body.data);
-        if (!userAuth) {
-            res.status(401).json({ message: 'User not connected' })
+        const cooker = await Cooker.findOne({
+            where: {
+                email: userAuth.data,
+                id: req.params.id
+            },
+            include: [
+                {
+                    model: Reservation,
+                    include: [
+                        {
+                            model: User,
+                        },
+                        {
+                            model: Menu
+                        },
+                        {
+                            model: Date_booking
+                        }
+                    ]
+                }, {
+                    model: Date_booking,
+                }
+            ]
+        });
+        let targetPath;
+        let tmpPath;
+        let imgOrigin;
+        if (fileToUpload) {
+            const extension = fileToUpload.mimetype.split('/');
+            targetPath = `public/images/${fileToUpload.filename}.${extension[1]}`;
+            tmpPath = fileToUpload.path;
+            imgOrigin = `${fileToUpload.filename}.${extension[1]}`;
         } else {
-            const cooker = await Cooker.findOne({
-                where: {
-                    email: userAuth.data,
-                    id: req.params.id
-                },
-                include: [
-                    {
-                        model: Reservation,
-                        include: [
-                            {
-                                model: User,
-                            },
-                            {
-                                model: Menu
-                            },
-                            {
-                                model: Date_booking
-                            }
-                        ]
-                    }, {
-                        model: Date_booking,
-                    }
-                ]
-            });
-            let targetPath;
-            let tmpPath;
-            let imgOrigin;
-            if (fileToUpload) {
-                const extension = fileToUpload.mimetype.split('/');
-                targetPath = `public/images/${fileToUpload.filename}.${extension[1]}`;
-                tmpPath = fileToUpload.path;
-                imgOrigin = `${fileToUpload.filename}.${extension[1]}`;
-            } else {
-                imgOrigin = cooker.picture;
-            }
+            imgOrigin = cooker.picture;
+        }
 
-            const updateCooker = {
-                last_name: meta.lastname,
-                first_name: meta.firstname,
-                picture: imgOrigin,
-                presentation: meta.presentation
-            }
-            const cookerUpdated = await cooker.update(updateCooker);
-            if (fileToUpload) {
-                const src = fs.createReadStream(tmpPath);
-                const dest = fs.createWriteStream(targetPath);
-                src.pipe(dest);
-                fs.unlink(tmpPath);
-            }
-            try {
-                res.json({ cookerUpdated, type: 'cooker' })
-            } catch (err) {
-                res.json({ err })
-            }
+        const updateCooker = {
+            last_name: meta.lastname,
+            first_name: meta.firstname,
+            picture: imgOrigin,
+            presentation: meta.presentation
+        }
+        const cookerUpdated = await cooker.update(updateCooker);
+        if (fileToUpload) {
+            const src = fs.createReadStream(tmpPath);
+            const dest = fs.createWriteStream(targetPath);
+            src.pipe(dest);
+            fs.unlink(tmpPath);
+        }
+        try {
+            res.json({ cookerUpdated, type: 'cooker' })
+        } catch (err) {
+            res.json({ err })
         }
     });
 
     app.post('/menu', auth.verifyToken, upload.single('picture'), async (req, res) => {
+        const userAuth = req.token
         const fileToUpload = req.file;
-        const userAuth = auth.checkToken(req.token);
         const meta = JSON.parse(req.body.data);
-        if (!userAuth) {
-            res.status(401).json({ message: 'User not connected' })
+        let targetPath;
+        let tmpPath;
+        let imgOrigin;
+        if (fileToUpload) {
+            const extension = fileToUpload.mimetype.split('/');
+            targetPath = `public/images/${fileToUpload.filename}.${extension[1]}`;
+            tmpPath = fileToUpload.path;
+            imgOrigin = `${fileToUpload.filename}.${extension[1]}`;
         } else {
-            let targetPath;
-            let tmpPath;
-            let imgOrigin;
-            if (fileToUpload) {
-                const extension = fileToUpload.mimetype.split('/');
-                targetPath = `public/images/${fileToUpload.filename}.${extension[1]}`;
-                tmpPath = fileToUpload.path;
-                imgOrigin = `${fileToUpload.filename}.${extension[1]}`;
-            } else {
-                imgOrigin = 'mer.png';
-            }
-            sequelize.transaction().then(async t => {
-                try {
-                    const cooker = await Cooker.findOne({
-                        where: {
-                            email: userAuth.data,
-                        }
-                    }, { transaction: t });
-                    const menu = {
-                        title: meta.title,
-                        start: meta.start,
-                        dish: meta.dish,
-                        dessert: meta.dessert,
-                        price: meta.price,
-                        cooker_id: cooker.id,
-                        draft: meta.draft,
-                        picture: imgOrigin
-                    };
-                    const createMenu = await Menu.create(menu, { transaction: t });
-                    meta.type.map(async (type) => {
-                        if (type.length > 0) {
-                            await Type_has_menu.create({ type_id: type, menu_id: createMenu.id })
-                        }
-                    });
-                    if (fileToUpload) {
-                        const src = fs.createReadStream(tmpPath);
-                        const dest = fs.createWriteStream(targetPath);
-                        src.pipe(dest);
-                        fs.unlink(tmpPath);
-                    }
-                    await t.commit();
-                    res.json({ newMenu: createMenu });
-                } catch (err) {
-                    await t.rollback();
-                    res.sendStatus(401);
-                }
-            });
+            imgOrigin = 'mer.png';
         }
+        sequelize.transaction().then(async t => {
+            try {
+                const cooker = await Cooker.findOne({
+                    where: {
+                        email: userAuth.data,
+                    }
+                }, { transaction: t });
+                const menu = {
+                    title: meta.title,
+                    start: meta.start,
+                    dish: meta.dish,
+                    dessert: meta.dessert,
+                    price: meta.price,
+                    cooker_id: cooker.id,
+                    draft: meta.draft,
+                    picture: imgOrigin
+                };
+                const createMenu = await Menu.create(menu, { transaction: t });
+                meta.type.map(async (type) => {
+                    if (type.length > 0) {
+                        return await Type_has_menu.create({ type_id: type, menu_id: createMenu.id });
+                    }
+                });
+                if (fileToUpload) {
+                    const src = fs.createReadStream(tmpPath);
+                    const dest = fs.createWriteStream(targetPath);
+                    src.pipe(dest);
+                    fs.unlink(tmpPath);
+                }
+                await t.commit();
+                res.json({ newMenu: createMenu });
+            } catch (err) {
+                await t.rollback();
+                res.sendStatus(401);
+            }
+        });
     });
     app.delete('/menu/:id', auth.verifyToken, async (req, res) => {
-        const userAuth = auth.checkToken(req.token);
-        if (!userAuth) {
-            res.status(401).json({ message: 'User not connected' })
+        const userAuth = req.token;
+        const menu = await Menu.findOne({
+            where: {
+                id: req.params.id
+            }
+        });
+        const cooker = await Cooker.findOne({
+            where: {
+                email: userAuth.data,
+            }
+        });
+        if (menu) {
+            if (menu.cooker_id === cooker.id) {
+                await menu.destroy();
+                fs.unlink(`public/images/${menu.picture}`, (err2) => {
+                    if (err2 && err2.code !== 'ENOENT') { // 'ENOENT' : file doesn't exist
+                        logger.error(`Error deleting file : ${err2}`);
+                    }
+                });
+                res.sendStatus(200);
+            }
         } else {
-            const menu = await Menu.findOne({
-                where: {
-                    id: req.params.id
-                }
-            });
-            const cooker = await Cooker.findOne({
-                where: {
-                    email: userAuth.data,
-                }
-            });
-            if (menu) {
-                if (menu.cooker_id === cooker.id) {
-                    await menu.destroy();
+            res.sendStatus(400);
+        }
+    });
+    app.put('/menu/:id', auth.verifyToken, upload.single('picture'), async (req, res) => {
+        const userAuth = req.token;
+        const fileToUpload = req.file;
+        const meta = JSON.parse(req.body.data);
+        sequelize.transaction().then(async t => {
+            try {
+                const cooker = await Cooker.findOne({
+                    where: {
+                        email: userAuth.data,
+                    },
+                }, { transaction: t });
+
+                const menu = await Menu.findOne({
+                    where: {
+                        id: req.params.id
+                    },
+                    include: [
+                        {
+                            model: Type_has_menu,
+                            include: [
+                                {
+                                    model: Type
+                                }
+                            ]
+                        }
+                    ]
+                }, { transaction: t });
+                let targetPath;
+                let tmpPath;
+                let imgOrigin;
+                if (fileToUpload) {
+                    const extension = fileToUpload.mimetype.split('/');
+                    targetPath = `public/images/${fileToUpload.filename}.${extension[1]}`;
+                    tmpPath = fileToUpload.path;
+                    imgOrigin = `${fileToUpload.filename}.${extension[1]}`;
                     fs.unlink(`public/images/${menu.picture}`, (err2) => {
                         if (err2 && err2.code !== 'ENOENT') { // 'ENOENT' : file doesn't exist
                             logger.error(`Error deleting file : ${err2}`);
                         }
                     });
-                    res.sendStatus(200);
+                } else {
+                    imgOrigin = menu.picture;
                 }
-            } else {
-                res.sendStatus(400);
+
+                const typeHasMenu = await Type_has_menu.destroy({
+                    where: {
+                        menu_id: menu.id
+                    }
+                }, { transaction: t });
+                meta.type.map(async (type) => {
+                    if (type.length > 0) {
+                        await Type_has_menu.create({ type_id: type, menu_id: menu.id }, { transaction: t })
+                    }
+                });
+                const metaMenu = {
+                    title: meta.title,
+                    start: meta.start,
+                    dish: meta.dish,
+                    dessert: meta.dessert,
+                    nb_guest: 2,
+                    price: meta.price,
+                    cooker_id: cooker.id,
+                    draft: meta.draft,
+                    picture: imgOrigin
+                };
+                const menuUpdated = await menu.update(metaMenu, { transaction: t });
+
+                await t.commit();
+                if (fileToUpload) {
+                    const src = fs.createReadStream(tmpPath);
+                    const dest = fs.createWriteStream(targetPath);
+                    src.pipe(dest);
+                    fs.unlink(tmpPath);
+                }
+                res.json({ menu: menuUpdated });
+            } catch (err) {
+                await t.rollback();
+                res.sendStatus(401);
             }
-        }
-    });
-    app.put('/menu/:id', auth.verifyToken, upload.single('picture'), async (req, res) => {
-        const userAuth = auth.checkToken(req.token);
-        const fileToUpload = req.file;
-        const meta = JSON.parse(req.body.data);
-        if (!userAuth) {
-            console.log('ERROR NOT AUTH')
-            res.status(401).json({ message: 'User not connected' })
-        } else {
-            sequelize.transaction().then(async t => {
-                try {
-                    const cooker = await Cooker.findOne({
-                        where: {
-                            email: userAuth.data,
-                        },
-                    }, { transaction: t });
-
-                    const menu = await Menu.findOne({
-                        where: {
-                            id: req.params.id
-                        },
-                        include: [
-                            {
-                                model: Type_has_menu,
-                                include: [
-                                    {
-                                        model: Type
-                                    }
-                                ]
-                            }
-                        ]
-                    }, { transaction: t });
-                    let targetPath;
-                    let tmpPath;
-                    let imgOrigin;
-                    if (fileToUpload) {
-                        const extension = fileToUpload.mimetype.split('/');
-                        targetPath = `public/images/${fileToUpload.filename}.${extension[1]}`;
-                        tmpPath = fileToUpload.path;
-                        imgOrigin = `${fileToUpload.filename}.${extension[1]}`;
-                        fs.unlink(`public/images/${menu.picture}`, (err2) => {
-                            if (err2 && err2.code !== 'ENOENT') { // 'ENOENT' : file doesn't exist
-                                logger.error(`Error deleting file : ${err2}`);
-                            }
-                        });
-                    } else {
-                        imgOrigin = menu.picture;
-                    }
-
-                    const typeHasMenu = await Type_has_menu.destroy({
-                        where: {
-                            menu_id: menu.id
-                        }
-                    }, { transaction: t });
-                    meta.type.map(async (type) => {
-                        if (type.length > 0) {
-                            await Type_has_menu.create({ type_id: type, menu_id: menu.id }, { transaction: t })
-                        }
-                    });
-                    const metaMenu = {
-                        title: meta.title,
-                        start: meta.start,
-                        dish: meta.dish,
-                        dessert: meta.dessert,
-                        nb_guest: 2,
-                        price: meta.price,
-                        cooker_id: cooker.id,
-                        draft: meta.draft,
-                        picture: imgOrigin
-                    };
-                    const menuUpdated = await menu.update(metaMenu, { transaction: t });
-
-                    await t.commit();
-                    if (fileToUpload) {
-                        const src = fs.createReadStream(tmpPath);
-                        const dest = fs.createWriteStream(targetPath);
-                        src.pipe(dest);
-                        fs.unlink(tmpPath);
-                    }
-                    res.json({ menu: menuUpdated });
-                } catch (err) {
-                    await t.rollback();
-                    res.sendStatus(401);
-                }
-            });
-        }
+        });
     });
     app.post('/date', auth.verifyToken, async (req, res) => {
-        const userAuth = auth.checkToken(req.token);
-        if (!userAuth) {
-            res.status(401).json({ message: 'User not connected' })
-        } else {
-            sequelize.transaction().then(async t => {
-                try {
-                    const cooker = await Cooker.findOne({
-                        where: {
-                            email: userAuth.data
-                        }
-                    }, { transaction: t });
+        const userAuth = req.token;
+        sequelize.transaction().then(async t => {
+            try {
+                const cooker = await Cooker.findOne({
+                    where: {
+                        email: userAuth.data
+                    }
+                }, { transaction: t });
 
-                    const booking = await Date_booking.destroy({
-                        where: {
-                            cooker_id: cooker.id,
-                            book: false
-                        }
-                    });
+                const booking = await Date_booking.destroy({
+                    where: {
+                        cooker_id: cooker.id,
+                        book: false
+                    }
+                });
 
-                    const dateBook = req.body.date.map((date) => {
-                        return {
-                            date,
-                            cooker_id: cooker.id,
-                            book: false,
-                        }
-                    }, { transaction: t });
-                    const dates = await Date_booking.bulkCreate(dateBook, { transaction: t });
-                    await t.commit();
-                    res.status(200).json({ dates });
-                } catch (err) {
-                    res.sendStatus(401);
-                    await t.rollback();
-                    console.log(err)
-                }
-            });
-        }
+                const dateBook = req.body.date.map((date) => {
+                    return {
+                        date,
+                        cooker_id: cooker.id,
+                        book: false,
+                    }
+                });
+                console.log(dateBook)
+                const dates = await Date_booking.bulkCreate(dateBook, { transaction: t });
+                await t.commit();
+                res.status(200).json({ dates });
+            } catch (err) {
+                res.sendStatus(401);
+                await t.rollback();
+                console.log(err)
+            }
+        });
     });
     app.get('/menu_type/:menuId', async (req, res) => {
         const types = await Type_has_menu.findAll({
@@ -375,27 +357,28 @@ const cooker = (app, sequelize) => {
         }
     });
     app.get('/menus_cooker/:id', async (req, res) => {
-        const menus = await Menu.findAll({
-            where: {
-                cooker_id: req.params.id
-            },
-            include: [
-                {
-                    model: Type_has_menu,
-                    include: [
-                        {
-                            model: Type
-                        }
-                    ]
-                }
-            ]
-        });
         try {
+            const menus = await Menu.findAll({
+                where: {
+                    cooker_id: req.params.id
+                },
+                include: [
+                    {
+                        model: Type_has_menu,
+                        include: [
+                            {
+                                model: Type
+                            }
+                        ]
+                    }
+                ]
+            });
+
             res.json({ menus })
         } catch (err) {
             res.sendStatus(304)
         }
-    })
+    });
 }
 
 module.exports = cooker;

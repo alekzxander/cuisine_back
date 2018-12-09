@@ -37,5 +37,12 @@ const userModel = sequelizeDb.define('user', {
 userModel.generateHash = function (password) {
     return bcrypt.hashSync(password, bcrypt.genSaltSync(8), null);
 };
-
+userModel.findAllDate = function (id) {
+    const user = this.findOne({
+        where: {
+            id: id
+        }
+    })
+    return user;
+};
 module.exports = userModel;

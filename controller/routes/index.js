@@ -9,6 +9,8 @@ const Type = require('../../models/type');
 const bcrypt = require('bcrypt-nodejs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
+const dotEnv = require('dotenv');
+dotEnv.config();
 const index = (app) => {
 
     app.post('/login', async (req, res) => {
@@ -58,7 +60,7 @@ const index = (app) => {
         if (logCooker) {
             bcrypt.compare(req.body.password, logCooker.password, (err, pass) => {
                 if (pass) {
-                    const token = jwt.sign({ data: req.body.email, exp: Math.floor(Date.now() / 1000) + (60 * 60) }, 'secret');
+                    const token = jwt.sign({ data: req.body.email }, process.env.SECRET_TOKEN);
                     res.json({ logCooker, token, type: 'cooker' });
                     // console.log('COOKER LOGIN')
                     // res.redirect('/test');
@@ -71,7 +73,7 @@ const index = (app) => {
             console.log('LOGIN USER')
             bcrypt.compare(req.body.password, logUser.password, (err, pass) => {
                 if (pass) {
-                    const token = jwt.sign({ data: req.body.email, exp: Math.floor(Date.now() / 1000) + (60 * 60) }, 'secret');
+                    const token = jwt.sign({ data: req.body.email }, 'secret');
                     res.json({ logUser, token, type: 'user' });
                 } else {
                     res.json({ type: 'error' });
@@ -83,46 +85,42 @@ const index = (app) => {
     });
 
     app.get('/menu/:id', async (req, res) => {
-        const menu = await Menu.findOne({
-            where: {
-                id: req.params.id
-            },
-            include: [
-                {
-                    model: Comment,
-                    include: [
-                        {
-                            model: User
-                        }
-                    ]
-                }, {
-                    model: Cooker,
-                    include: [
-                        {
-                            model: Date_booking,
-                            where: {
-                                book: false
-                            }
-                        }
-                    ]
-
-                }, {
-                    model: Type_has_menu,
-                    include: [
-                        {
-                            model: Type
-                        }
-                    ]
-                }
-            ],
-
-        });
-        const calendar = await Date_booking.findAll({
-            where: {
-                cooker_id: menu.cooker_id
-            }
-        });
         try {
+            const menu = await Menu.findOne({
+                where: {
+                    id: req.params.id
+                },
+                include: [
+                    {
+                        model: Comment,
+                        include: [
+                            {
+                                model: User
+                            }
+                        ]
+                    }, {
+                        model: Cooker,
+                        include: [
+                            {
+                                model: Date_booking,
+                                where: {
+                                    book: false
+                                }
+                            }
+                        ]
+
+                    }, {
+                        model: Type_has_menu,
+                        include: [
+                            {
+                                model: Type
+                            }
+                        ]
+                    }
+                ],
+
+            });
+
             res.json({ menu });
         } catch (err) {
             res.sendStatus(401);

@@ -2,8 +2,9 @@ const nodemailer = require('nodemailer');
 const ejs = require('ejs');
 const path = require('path');
 const { promisify } = require('util');
-
-
+const dotEnv = require('dotenv');
+dotEnv.config();
+const { USER_MAIL, PASSWORD_MAIL } = process.env;
 const renderFile = promisify(ejs.renderFile).bind(ejs);
 
 const smtpConfig = {
@@ -11,8 +12,8 @@ const smtpConfig = {
     port: 465,
     secure: true, // true for 465, false for other ports
     auth: {
-        user: 'alekz.contact.webdev@gmail.com',
-        pass: 'projet2501',
+        user: USER_MAIL,
+        pass: PASSWORD_MAIL,
     }
 };
 
