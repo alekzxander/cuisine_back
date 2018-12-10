@@ -1,6 +1,9 @@
 const Sequelize = require('sequelize');
+const dotEnv = require('dotenv');
+dotEnv.config();
+const { DATANAME, DATAPASS } = process.env;
 
-const sequelize = new Sequelize('cuisinepouzot', 'root', 'root', {
+const sequelize = new Sequelize('cuisinepouzot', DATANAME, DATAPASS, {
     host: 'localhost',
     dialect: 'mysql',
     operatorsAliases: false,

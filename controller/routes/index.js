@@ -62,15 +62,12 @@ const index = (app) => {
                 if (pass) {
                     const token = jwt.sign({ data: req.body.email }, process.env.SECRET_TOKEN);
                     res.json({ logCooker, token, type: 'cooker' });
-                    // console.log('COOKER LOGIN')
-                    // res.redirect('/test');
                 } else {
                     res.json({ type: 'error' });
                 }
             });
 
         } else if (logUser) {
-            console.log('LOGIN USER')
             bcrypt.compare(req.body.password, logUser.password, (err, pass) => {
                 if (pass) {
                     const token = jwt.sign({ data: req.body.email }, 'secret');
@@ -258,11 +255,12 @@ const index = (app) => {
                 }
             });
             fs.readFile(`public/images/${cooker.picture}`, function (err, data) {
-                if (err) {
-                    return console.log(err);
+                try {
+                    res.contentType('image/png');
+                    res.end(data, 'binary');
+                } catch (err) {
+                    throw new Error(err)
                 }
-                res.contentType('image/png');
-                res.end(data, 'binary');
             });
         } else if (req.params.model === 'User') {
             const user = await User.findOne({
@@ -271,11 +269,12 @@ const index = (app) => {
                 }
             });
             fs.readFile(`public/images/${user.picture}`, function (err, data) {
-                if (err) {
-                    return console.log(err);
+                try {
+                    res.contentType('image/png');
+                    res.end(data, 'binary');
+                } catch (err) {
+                    throw new Error(err)
                 }
-                res.contentType('image/png');
-                res.end(data, 'binary');
             });
         } else {
             const menu = await Menu.findOne({
@@ -285,15 +284,14 @@ const index = (app) => {
 
             });
             fs.readFile(`public/images/${menu.picture}`, function (err, data) {
-
-                if (err) {
-                    return console.log(err, 'cannot get image');
+                try {
+                    res.contentType('image/png');
+                    res.end(data, 'binary');
+                } catch (err) {
+                    throw new Error(err)
                 }
-                res.contentType('image/png');
-                res.end(data, 'binary');
             })
         }
-
     });
 
 };

@@ -19,7 +19,7 @@ dotEnv.config();
 
 const cooker = (app, sequelize) => {
 
-    app.post('/profil-cooker', async (req, res) => {
+    app.post('/cooker', async (req, res) => {
         const verifyCooker = await Cooker.findOne({
             where: {
                 email: req.body.email
@@ -85,7 +85,7 @@ const cooker = (app, sequelize) => {
         }
 
     });
-    app.put('/profil-cooker/:id', auth.verifyToken, upload.single('avatar'), async (req, res) => {
+    app.put('/cooker/:id', auth.verifyToken, upload.single('avatar'), async (req, res) => {
         const fileToUpload = req.file;
         const userAuth = req.token;
         const meta = JSON.parse(req.body.data);
@@ -233,7 +233,7 @@ const cooker = (app, sequelize) => {
                     where: {
                         email: userAuth.data,
                     },
-                }, { transaction: t });
+                });
 
                 const menu = await Menu.findOne({
                     where: {
@@ -249,7 +249,7 @@ const cooker = (app, sequelize) => {
                             ]
                         }
                     ]
-                }, { transaction: t });
+                });
                 let targetPath;
                 let tmpPath;
                 let imgOrigin;
@@ -312,14 +312,14 @@ const cooker = (app, sequelize) => {
                     where: {
                         email: userAuth.data
                     }
-                }, { transaction: t });
+                });
 
                 const booking = await Date_booking.destroy({
                     where: {
                         cooker_id: cooker.id,
                         book: false
                     }
-                });
+                }, { transaction: t });
 
                 const dateBook = req.body.date.map((date) => {
                     return {
@@ -328,14 +328,12 @@ const cooker = (app, sequelize) => {
                         book: false,
                     }
                 });
-                console.log(dateBook)
                 const dates = await Date_booking.bulkCreate(dateBook, { transaction: t });
                 await t.commit();
                 res.status(200).json({ dates });
             } catch (err) {
                 res.sendStatus(401);
                 await t.rollback();
-                console.log(err)
             }
         });
     });

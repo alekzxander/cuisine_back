@@ -22,7 +22,7 @@ const user = (app, sequelize) => {
     app.get('/meuh', async (req, res) => {
         // console.log(await User.findAllDate(1))
     })
-    app.post('/profil-user', async (req, res) => {
+    app.post('/user', async (req, res) => {
         const verifyUser = await User.find({
             where: {
                 email: req.body.email
@@ -81,7 +81,7 @@ const user = (app, sequelize) => {
     });
 
 
-    app.put('/profil-user/:id', auth.verifyToken, upload.single('avatar'), async (req, res) => {
+    app.put('/user/:id', auth.verifyToken, upload.single('avatar'), async (req, res) => {
         const fileToUpload = req.file;
         const userAuth = req.token;
         const meta = JSON.parse(req.body.data);
@@ -265,7 +265,9 @@ const user = (app, sequelize) => {
         }
     });
 
-
+    app.get('/cancelPayment', (req, res) => {
+        res.render('cancel.ejs')
+    });
     app.get('/executePayment/:price', (req, res) => {
         const paymentId = req.query.paymentId;
         const payer_id = req.query.PayerID;
@@ -278,6 +280,7 @@ const user = (app, sequelize) => {
                 }
             }]
         };
+
         paypal.payment.execute(paymentId, execute_payment_json, async function (error, payment) {
             if (error) {
                 throw error;
@@ -343,9 +346,7 @@ const user = (app, sequelize) => {
             }
         });
     });
-    app.get('/cancelPayment', (req, res) => {
-        res.send('trasaction cancel')
-    });
+
 };
 
 module.exports = user;
