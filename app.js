@@ -45,8 +45,8 @@ Type_has_menu.belongsTo(Type);
 Cooker.hasMany(Date_booking);
 Date_booking.belongsTo(Cooker);
 index(app);
-user(app, sequelize);
-cooker(app, sequelize);
+user(app);
+cooker(app);
 
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
