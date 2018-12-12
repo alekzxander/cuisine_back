@@ -18,7 +18,7 @@ const upload = multer({
 
 const reservations = new reservationController(User, Cooker, Date_booking, Menu);
 const users = new userController(User, Reservation, Date_booking, Menu, Email);
-const comments = new commentControler(Menu, User, Comment);
+const comments = new commentControler(Menu, User, Comment, Reservation);
 const user = (app) => {
     app.post('/user', users.createUser);
     app.put('/user/:id', auth.verifyToken, upload.single('avatar'), users.updateUser);
