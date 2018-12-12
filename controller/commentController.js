@@ -1,17 +1,21 @@
-const Comment = require('../models/comment');
-const Menu = require('../models/menu');
-const User = require('../models/user');
+
 
 
 class commentController {
+    constructor(Menu, User, Comment) {
+        this.menu = Menu;
+        this.user = User;
+        this.comment = Comment;
+        this.getComments = this.getComments.bind(this);
+    }
     async getComments(req, res) {
-        const comments = await Comment.findAll({
+        const comments = await this.comment.findAll({
             include: [
                 {
-                    model: Menu
+                    model: this.menu
                 },
                 {
-                    model: User,
+                    model: this.user,
                     attributes: [
                         'first_name',
                         'last_name',
@@ -29,4 +33,4 @@ class commentController {
         }
     }
 };
-module.exports = new commentController();
+module.exports = commentController;

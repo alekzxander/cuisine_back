@@ -1,15 +1,21 @@
-const User = require('../models/user');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
-const Reservation = require('../models/reservation');
 const fs = require('fs');
-const Date_booking = require('../models/date_booking');
-const Menu = require('../models/menu');
-const Email = require('./config/email');
+
 const paypal = require('paypal-rest-sdk');
 const dotEnv = require('dotenv');
 dotEnv.config();
+
 class userController {
+    constructor(User, Reservation, Date_booking, Menu, Email) {
+        this.user = User;
+        this.reservation = Reservation;
+        this.date_booking = Date_booking;
+        this.menu = Menu;
+        this.email = Email;
+        this.createUser = this.createUser.bind(this);
+        this.updateUser = this.updateUser.bind(this);
+    }
     async createUser(req, res) {
         const verifyUser = await User.find({
             where: {
@@ -105,4 +111,4 @@ class userController {
         }
     }
 };
-module.exports = new userController()
+module.exports = userController;

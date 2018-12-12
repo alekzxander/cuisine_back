@@ -1,33 +1,45 @@
-const Menu = require('../models/menu');
-const Cooker = require('../models/cooker');
-const User = require('../models/user');
-const Comment = require('../models/comment');
-const Type_has_menu = require('../models/type_has_menu');
-const Type = require('../models/type');
 const fs = require('fs');
 const dotEnv = require('dotenv');
 const sequelize = require('../database/db');
-const Date_booking = require('../models/date_booking');
 dotEnv.config();
 
 
 class menuController {
+    constructor(Menu, Cooker, User, Comment, Type_has_menu, Type, Date_booking) {
+        this.menu = Menu;
+        this.cooker = Cooker;
+        this.user = User;
+        this.comment = Comment;
+        this.type_has_menu = Type_has_menu;
+        this.type = Type;
+        this.date_booking = Date_booking;
+        this.getMenus = this.getMenus.bind(this);
+        this.menuChef = this.menuChef.bind(this);
+        this.getTypes = this.getTypes.bind(this);
+        this.getImages = this.getImages.bind(this);
+        this.getMenu = this.getMenu.bind(this);
+        this.createMenu = this.createMenu.bind(this);
+        this.deleteMenu = this.deleteMenu.bind(this);
+        this.updateMenu = this.updateMenu.bind(this);
+        this.getTypesByMenu = this.getTypesByMenu.bind(this);
+        this.menusByCooker = this.menusByCooker.bind(this);
+    }
     async getMenus(req, res) {
         if (Object.keys(req.query).length === 0) {
-            const menus = await Menu.findAll({
+            const menus = await this.menu.findAll({
                 where: {
                     draft: false
                 },
                 include: [
                     {
-                        model: Cooker,
+                        model: this.cooker,
                         attributes: ['last_name', 'first_name', 'id'],
                     },
                     {
-                        model: Type_has_menu,
+                        model: this.type_has_menu,
                         include: [
                             {
-                                model: Type
+                                model: this.type
                             }
                         ]
                     }
@@ -36,27 +48,27 @@ class menuController {
             });
             res.json({ menus })
         } else {
-            const menus = await Menu.findAll({
+            const menus = await this.menu.findAll({
                 where: {
                     draft: false
                 },
                 include: [
                     {
-                        model: Type
+                        model: this.type
                     }
                 ],
                 include: [{
-                    model: Type_has_menu,
+                    model: this.type_has_menu,
                     include: [
                         {
-                            model: Type
+                            model: this.type
                         }
                     ],
                     where: {
                         type_id: req.query.type
                     },
                 }, {
-                    model: Cooker,
+                    model: this.cooker,
                     attributes: ['last_name', 'first_name', 'id'],
                 }
                 ],
@@ -67,27 +79,27 @@ class menuController {
     };
 
     async menuChef(req, res) {
-        const menusByChef = await Cooker.findOne({
+        const menusByChef = await this.cooker.findOne({
             where: {
                 id: req.params.chefId
             },
             include: [
                 {
-                    model: Menu,
+                    model: this.menu,
                     include: [
                         {
-                            model: Comment,
+                            model: this.comment,
                             include: [
                                 {
-                                    model: User
+                                    model: this.user
                                 }
                             ]
                         },
                         {
-                            model: Type_has_menu,
+                            model: this.type_has_menu,
                             include: [
                                 {
-                                    model: Type,
+                                    model: this.type,
                                     attributes: ['name']
                                 }
                             ]
@@ -103,12 +115,12 @@ class menuController {
         });
     };
     async getTypes(req, res) {
-        const types = await Type.findAll({});
+        const types = await this.type.findAll({});
         res.json({ types })
     };
     async getImages(req, res) {
         if (req.params.model === 'Cooker') {
-            const cooker = await Cooker.findOne({
+            const cooker = await this.cooker.findOne({
                 where: {
                     id: req.params.id
                 }
@@ -122,7 +134,7 @@ class menuController {
                 }
             });
         } else if (req.params.model === 'User') {
-            const user = await User.findOne({
+            const user = await this.user.findOne({
                 where: {
                     id: req.params.id
                 }
@@ -136,7 +148,7 @@ class menuController {
                 }
             });
         } else {
-            const menu = await Menu.findOne({
+            const menu = await this.menu.findOne({
                 where: {
                     id: req.params.id
                 }
@@ -154,23 +166,23 @@ class menuController {
     };
     async getMenu(req, res) {
         try {
-            const menu = await Menu.findOne({
+            const menu = await this.menu.findOne({
                 where: {
                     id: req.params.id
                 },
                 include: [
                     {
-                        model: Comment,
+                        model: this.comment,
                         include: [
                             {
-                                model: User
+                                model: this.user
                             }
                         ]
                     }, {
-                        model: Cooker,
+                        model: this.cooker,
                         include: [
                             {
-                                model: Date_booking,
+                                model: this.date_booking,
                                 where: {
                                     book: false
                                 }
@@ -178,10 +190,10 @@ class menuController {
                         ]
 
                     }, {
-                        model: Type_has_menu,
+                        model: this.type_has_menu,
                         include: [
                             {
-                                model: Type
+                                model: this.type
                             }
                         ]
                     }
@@ -210,7 +222,7 @@ class menuController {
         }
         sequelize.transaction().then(async t => {
             try {
-                const cooker = await Cooker.findOne({
+                const cooker = await this.cooker.findOne({
                     where: {
                         email: userAuth.data,
                     }
@@ -225,10 +237,10 @@ class menuController {
                     draft: meta.draft,
                     picture: imgOrigin
                 };
-                const createMenu = await Menu.create(menu, { transaction: t });
+                const createMenu = await this.menu.create(menu, { transaction: t });
                 meta.type.map(async (type) => {
                     if (type.length > 0) {
-                        return await Type_has_menu.create({ type_id: type, menu_id: createMenu.id });
+                        return await this.type_has_menu.create({ type_id: type, menu_id: createMenu.id });
                     }
                 });
                 if (fileToUpload) {
@@ -247,12 +259,12 @@ class menuController {
     }
     async deleteMenu(req, res) {
         const userAuth = req.token;
-        const menu = await Menu.findOne({
+        const menu = await this.menu.findOne({
             where: {
                 id: req.params.id
             }
         });
-        const cooker = await Cooker.findOne({
+        const cooker = await this.cooker.findOne({
             where: {
                 email: userAuth.data,
             }
@@ -277,22 +289,22 @@ class menuController {
         const meta = JSON.parse(req.body.data);
         sequelize.transaction().then(async t => {
             try {
-                const cooker = await Cooker.findOne({
+                const cooker = await this.cooker.findOne({
                     where: {
                         email: userAuth.data,
                     },
                 });
 
-                const menu = await Menu.findOne({
+                const menu = await this.menu.findOne({
                     where: {
                         id: req.params.id
                     },
                     include: [
                         {
-                            model: Type_has_menu,
+                            model: this.type_has_menu,
                             include: [
                                 {
-                                    model: Type
+                                    model: this.type
                                 }
                             ]
                         }
@@ -315,14 +327,14 @@ class menuController {
                     imgOrigin = menu.picture;
                 }
 
-                const typeHasMenu = await Type_has_menu.destroy({
+                const typeHasMenu = await this.type_has_menu.destroy({
                     where: {
                         menu_id: menu.id
                     }
                 }, { transaction: t });
                 meta.type.map(async (type) => {
                     if (type.length > 0) {
-                        await Type_has_menu.create({ type_id: type, menu_id: menu.id }, { transaction: t })
+                        await this.type_has_menu.create({ type_id: type, menu_id: menu.id }, { transaction: t })
                     }
                 });
                 const metaMenu = {
@@ -353,13 +365,13 @@ class menuController {
         });
     };
     async getTypesByMenu(req, res) {
-        const types = await Type_has_menu.findAll({
+        const types = await this.type_has_menu.findAll({
             where: {
                 menu_id: req.params.menuId
             },
             include: [
                 {
-                    model: Type
+                    model: this.type
                 }
             ]
         });
@@ -371,16 +383,16 @@ class menuController {
     }
     async menusByCooker(req, res) {
         try {
-            const menus = await Menu.findAll({
+            const menus = await this.menu.findAll({
                 where: {
                     cooker_id: req.params.id
                 },
                 include: [
                     {
-                        model: Type_has_menu,
+                        model: this.type_has_menu,
                         include: [
                             {
-                                model: Type
+                                model: this.type
                             }
                         ]
                     }
@@ -394,4 +406,4 @@ class menuController {
     }
 };
 
-module.exports = new menuController();
+module.exports = menuController;
