@@ -1,25 +1,32 @@
-const Menu = require('../models/menu');
-const Cooker = require('../models/cooker');
-const Date_booking = require('../models/date_booking');
-const User = require('../models/user');
-const Reservation = require('../models/reservation');
+
 const bcrypt = require('bcrypt-nodejs');
 const jwt = require('jsonwebtoken');
 const dotEnv = require('dotenv');
 const Email = require('./config/email');
 const sequelize = require('../database/db');
+const fs = require('fs');
 dotEnv.config();
 
 
 class cookerController {
+    constructor(Menu, Cooker, Date_booking, User, Reservation) {
+        this.menu = Menu;
+        this.cooker = Cooker;
+        this.date_booking = Date_booking;
+        this.user = User;
+        this.reservation = Reservation;
+        this.createCooker = this.createCooker.bind(this);
+        this.updateDate = this.updateDate.bind(this);
+        this.updateCooker = this.updateCooker.bind(this);
+    }
     async createCooker(req, res) {
-        const verifyCooker = await Cooker.findOne({
+        const verifyCooker = await this.cooker.findOne({
             where: {
                 email: req.body.email
             }
         });
         if (!verifyCooker) {
-            const password = Cooker.generateHash(req.body.password);
+            const password = this.cooker.generateHash(req.body.password);
             const cooker = {
                 last_name: req.body.lastname,
                 first_name: req.body.firstname,
@@ -27,27 +34,27 @@ class cookerController {
                 password,
                 picture: 'user.png'
             };
-            const logCooker = await Cooker.create(cooker);
-            const cook = await Cooker.findOne({
+            const logCooker = await this.cooker.create(cooker);
+            const cook = await this.cooker.findOne({
                 where: {
                     id: logCooker.id
                 },
                 include: [
                     {
-                        model: Reservation,
+                        model: this.reservation,
                         include: [
                             {
-                                model: User,
+                                model: this.user,
                             },
                             {
-                                model: Menu
+                                model: this.menu
                             },
                             {
-                                model: Date_booking
+                                model: this.date_booking
                             }
                         ]
                     }, {
-                        model: Date_booking,
+                        model: this.date_booking,
                     }
                 ]
             });
@@ -80,27 +87,27 @@ class cookerController {
         const fileToUpload = req.file;
         const userAuth = req.token;
         const meta = JSON.parse(req.body.data);
-        const cooker = await Cooker.findOne({
+        const cooker = await this.cooker.findOne({
             where: {
                 email: userAuth.data,
                 id: req.params.id
             },
             include: [
                 {
-                    model: Reservation,
+                    model: this.reservation,
                     include: [
                         {
-                            model: User,
+                            model: this.user,
                         },
                         {
-                            model: Menu
+                            model: this.menu
                         },
                         {
-                            model: Date_booking
+                            model: this.date_booking
                         }
                     ]
                 }, {
-                    model: Date_booking,
+                    model: this.date_booking,
                 }
             ]
         });
@@ -139,13 +146,13 @@ class cookerController {
         const userAuth = req.token;
         sequelize.transaction().then(async t => {
             try {
-                const cooker = await Cooker.findOne({
+                const cooker = await this.cooker.findOne({
                     where: {
                         email: userAuth.data
                     }
                 });
 
-                const booking = await Date_booking.destroy({
+                const booking = await this.date_booking.destroy({
                     where: {
                         cooker_id: cooker.id,
                         book: false
@@ -159,7 +166,7 @@ class cookerController {
                         book: false,
                     }
                 });
-                const dates = await Date_booking.bulkCreate(dateBook, { transaction: t });
+                const dates = await this.date_booking.bulkCreate(dateBook, { transaction: t });
                 await t.commit();
                 res.status(200).json({ dates });
             } catch (err) {
@@ -169,4 +176,4 @@ class cookerController {
         });
     };
 }
-module.exports = new cookerController();
+module.exports = cookerController;

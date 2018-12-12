@@ -1,8 +1,4 @@
-const Menu = require('../models/menu');
-const Cooker = require('../models/cooker');
-const Date_booking = require('../models/date_booking');
-const User = require('../models/user');
-const Reservation = require('../models/reservation');
+
 const bcrypt = require('bcrypt-nodejs');
 const jwt = require('jsonwebtoken');
 const dotEnv = require('dotenv');
@@ -11,45 +7,53 @@ dotEnv.config();
 
 
 class authController {
+    constructor(Menu, Cooker, Date_booking, Reservation, User) {
+        this.menu = Menu;
+        this.cooker = Cooker;
+        this.date_booking = Date_booking;
+        this.reservation = Reservation;
+        this.user = User;
+        this.login = this.login.bind(this);
+    }
     async login(req, res) {
-        const logUser = await User.find({
+        const logUser = await this.user.find({
             where: {
                 email: req.body.email
             },
             include: [
                 {
-                    model: Reservation,
+                    model: this.reservation,
                     attributes: ['nb_guest', 'commented', 'id'],
                     include: [
                         {
-                            model: Date_booking,
+                            model: this.date_booking,
                         },
                         {
-                            model: Menu
+                            model: this.menu
                         }
                     ]
                 }
             ]
         });
-        const logCooker = await Cooker.find({
+        const logCooker = await this.cooker.find({
             where: {
                 email: req.body.email
             },
             include: [
                 {
-                    model: Date_booking
+                    model: this.date_booking
                 },
                 {
-                    model: Reservation,
+                    model: this.reservation,
                     include: [
                         {
-                            model: User,
+                            model: this.user,
                         },
                         {
-                            model: Menu
+                            model: this.menu
                         },
                         {
-                            model: Date_booking
+                            model: this.date_booking
                         }
                     ]
                 }
@@ -80,4 +84,4 @@ class authController {
     };
 
 }
-module.exports = new authController();
+module.exports = authController;

@@ -1,12 +1,10 @@
-const User = require('../models/user');
-const Cooker = require('../models/cooker');
-const Date_booking = require('../models/date_booking');
-const Menu = require('../models/menu');
-const Email = require('./config/email');
+
+const dotEnv = require('dotenv');
 const moment = require('moment');
 const paypal = require('paypal-rest-sdk');
-const dotEnv = require('dotenv');
 const Reservation = require('../models/reservation');
+const Email = require('./config/email');
+
 dotEnv.config();
 paypal.configure({
     'mode': 'sandbox', //sandbox or live
@@ -21,11 +19,24 @@ let menuInstance;
 let guest;
 
 class reservationController {
+    constructor(User, Cooker, Date_booking, Menu) {
+        // console.log(Email, Reservation)
+        this.user = User;
+        this.cooker = Cooker;
+        this.date_booking = Date_booking;
+        this.menu = Menu;
+        this.paypal = paypal;
+        this.initReservation = this.initReservation.bind(this);
+        this.cancelPayment = this.cancelPayment.bind(this);
+        this.executePayment = this.executePayment.bind(this);
+    }
     async initReservation(req, res) {
+        // console.log(this.cooker, 'COOKER MODEL');
+        // console.log(this.reservation, 'RESERVATION MODEL')
         const userAuth = req.token;
         try {
             guest = req.body.nbGuest;
-            const findUser = await User.findOne({
+            const findUser = await this.user.findOne({
                 where: {
                     email: userAuth.data
                 }
@@ -33,21 +44,21 @@ class reservationController {
             if (findUser) {
                 userInstance = findUser;
                 // Check user is not a cooker
-                const findMenu = await Menu.findOne({
+                const findMenu = await this.menu.findOne({
                     where: {
                         id: req.body.menuId
                     }
                 });
                 menuInstance = findMenu;
                 // get menu select by user
-                const findCooker = await Cooker.findOne({
+                const findCooker = await this.cooker.findOne({
                     where: {
                         id: findMenu.cooker_id
                     }
                 });
                 cookerInstance = findCooker;
                 // check date is exist
-                const date = await Date_booking.compareDate(findCooker.id, req.body.dateId);
+                const date = await this.date_booking.compareDate(findCooker.id, req.body.dateId);
                 dateInstance = date;
                 if (date) {
                     // if date exist update date for render booking
@@ -116,6 +127,7 @@ class reservationController {
             if (error) {
                 throw error;
             } else {
+                // console.log(this.reservation, 'RESERVATION MODEL')
                 const reservation = {
                     nb_guest: guest,
                     date_booking_id: dateInstance.id,
@@ -170,11 +182,10 @@ class reservationController {
                     }
                     console.log(info, 'INFO MAIL TO SEND')
                 });
-                console.log(JSON.stringify(payment));
                 res.redirect('http://localhost:3000');
             }
         });
     }
 };
 
-module.exports = new reservationController();
+module.exports = reservationController;
