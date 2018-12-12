@@ -154,7 +154,6 @@ class menuController {
     };
     async getMenu(req, res) {
         try {
-            console.log('HELLO MENU SELECTED')
             const menu = await Menu.findOne({
                 where: {
                     id: req.params.id
@@ -189,7 +188,6 @@ class menuController {
                 ],
 
             });
-            console.log(menu)
             res.json({ menu });
         } catch (err) {
             res.sendStatus(401);
@@ -216,7 +214,7 @@ class menuController {
                     where: {
                         email: userAuth.data,
                     }
-                }, { transaction: t });
+                });
                 const menu = {
                     title: meta.title,
                     start: meta.start,

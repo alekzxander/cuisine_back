@@ -27,26 +27,7 @@ class userController {
                 phone: req.body.phone,
                 picture: 'user.png'
             };
-
             const user = await User.create(userInstance);
-            const logUser = await User.findOne({
-                where: {
-                    id: user.id
-                }, include: [
-                    {
-                        model: Reservation,
-                        attributes: ['nb_guest', 'commented', 'id'],
-                        include: [
-                            {
-                                model: Date_booking,
-                            },
-                            {
-                                model: Menu
-                            }
-                        ]
-                    }
-                ]
-            });
             const token = jwt.sign({ data: req.body.email }, process.env.SECRET_TOKEN);
             const mailContent = await Email.sendSuccessRegister(
                 req.body.firstname,
@@ -62,11 +43,12 @@ class userController {
                 if (error) {
                 }
             });
-            res.json({ logUser, token, type: 'user', message: `Votre inscription à était enregistrer avec succes, vous pouvez désormais avoir accés à votre profil !` });
+            res.json({ user, token, type: 'user', message: `Votre inscription à était enregistrer avec succes, vous pouvez désormais avoir accés à votre profil !` });
         } else {
             res.json({ message: 'Désolé mais ce compte existe déjà' })
         }
     };
+
     async updateUser(req, res) {
         const fileToUpload = req.file;
         const userAuth = req.token;

@@ -11,7 +11,7 @@ const upload = multer({
 const user = (app) => {
     app.post('/user', userController.createUser);
     app.put('/user/:id', auth.verifyToken, upload.single('avatar'), userController.updateUser);
-    app.post('/reservation/:menuId/:dateId', auth.verifyToken, reservationController.initReservation);
+    app.post('/reservation', auth.verifyToken, reservationController.initReservation);
     app.get('/cancelPayment', reservationController.cancelPayment);
     app.get('/executePayment/:price', reservationController.executePayment);
 };

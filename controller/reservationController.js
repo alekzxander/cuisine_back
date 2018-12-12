@@ -35,7 +35,7 @@ class reservationController {
                 // Check user is not a cooker
                 const findMenu = await Menu.findOne({
                     where: {
-                        id: req.params.menuId
+                        id: req.body.menuId
                     }
                 });
                 menuInstance = findMenu;
@@ -47,7 +47,7 @@ class reservationController {
                 });
                 cookerInstance = findCooker;
                 // check date is exist
-                const date = await Date_booking.compareDate(findCooker.id, req.params.dateId);
+                const date = await Date_booking.compareDate(findCooker.id, req.body.dateId);
                 dateInstance = date;
                 if (date) {
                     // if date exist update date for render booking
