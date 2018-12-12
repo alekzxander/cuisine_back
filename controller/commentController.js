@@ -1,6 +1,4 @@
-const Comment = require('../models/comment');
-const Menu = require('../models/menu');
-const User = require('../models/user');
+
 
 
 class commentController {
@@ -29,4 +27,4 @@ class commentController {
         }
     }
 };
-module.exports = new commentController();
+module.exports = commentController;
